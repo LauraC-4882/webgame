@@ -844,7 +844,7 @@ function genericGame(container) {
    没填就只用 localStorage（和以前一样）
    ========================================================== */
 const SUPABASE_URL = 'https://ycgnnbogklqmgxtqknwg.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_Ual7vfs7qm-NMewsUhWlZA_BaFIeM7V';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljZ25uYm9na2xxbWd4dHFrbndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDkzOTksImV4cCI6MjA5MTMyNTM5OX0.trUScOnaCzgTqw9zYzqG9cpAfgtjXyOWbLqnm1QaKfw';
 
 let _supabase = null;
 function getSupabase() {
