@@ -843,8 +843,8 @@ function genericGame(container) {
    在 SUPABASE_URL 和 SUPABASE_KEY 填入你的项目信息即可启用
    没填就只用 localStorage（和以前一样）
    ========================================================== */
-const SUPABASE_URL = '';  // ← 填入你的 Supabase 项目 URL
-const SUPABASE_KEY = '';  // ← 填入你的 anon public key
+const SUPABASE_URL = 'https://ycgnnbogklqmgxtqknwg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Ual7vfs7qm-NMewsUhWlZA_BaFIeM7V';
 
 let _supabase = null;
 function getSupabase() {
