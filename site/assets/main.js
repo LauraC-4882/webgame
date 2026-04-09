@@ -888,7 +888,7 @@ async function renderLeaderboard(node) {
   const best = Number(localStorage.getItem(bestKey()) || 0);
 
   // 先显示本地数据（快速）
-  node.innerHTML = buildLeaderboardHTML('加载中...', localList, best, false);
+  node.innerHTML = buildLeaderboardHTML('🌐 全球排行榜', localList, best, false);
 
   // 尝试加载云端数据
   const cloudData = await cloudLoadScores();
