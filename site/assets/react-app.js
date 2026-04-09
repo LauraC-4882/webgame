@@ -12,15 +12,15 @@ function App(){
     <div>
       <header className="site-header"><h1>Webgame</h1>
         <nav>
-          <a href="/site/app.html#home">首页</a>
-          <a href="/site/app.html#jump">跳一跳</a>
-          <a href="/site/app.html#connect">连连看</a>
-          <a href="/site/app.html#memory">记忆力</a>
-          <a href="/site/app.html#runner">跑酷</a>
-          <a href="/site/app.html#match3">消消乐</a>
-          <a href="/site/app.html#merge">合成</a>
-          <a className="auth" href="/site/login.html">登录</a>
-          <a className="auth" href="/site/signup.html">注册</a>
+          <a href="./app.html#home">首页</a>
+          <a href="./app.html#jump">跳一跳</a>
+          <a href="./app.html#connect">连连看</a>
+          <a href="./app.html#memory">记忆力</a>
+          <a href="./app.html#runner">跑酷</a>
+          <a href="./app.html#match3">消消乐</a>
+          <a href="./app.html#merge">合成</a>
+          <a className="auth" href="./login.html">登录</a>
+          <a className="auth" href="./signup.html">注册</a>
         </nav>
       </header>
       <main className="container">

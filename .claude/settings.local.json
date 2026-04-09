@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python -m http.server 8000 --directory site)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(curl -s http://localhost:8000/assets/main.js)",
+      "Bash(curl -s \"http://localhost:8000/assets/main.js\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8000/assets/main.js\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8000/games/jump.html\")",
+      "Bash(curl -s \"http://localhost:8000/\")",
+      "Bash(pkill -f \"http.server\")",
+      "Bash(python -m http.server 8000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8000/\")",
+      "Bash(python -m http.server 8000 --directory \"c:/Users/laura/Downloads/webgame/site\")",
+      "Bash(curl -s -o /dev/null -w \"root:%{http_code} \" http://localhost:8000/)",
+      "Bash(curl -s -o /dev/null -w \"main.js:%{http_code} \" http://localhost:8000/assets/main.js)",
+      "Bash(curl -s -o /dev/null -w \"jump:%{http_code}\" http://localhost:8000/games/jump.html)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(pkill -f \"http.server\" tasklist)",
+      "Bash(taskkill /F /IM python.exe /T)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 11792 /F)",
+      "Bash(taskkill /PID 12944 /F)",
+      "Bash(taskkill /PID 24228 /F)",
+      "Bash(taskkill /PID 35820 /F)",
+      "Bash(python -c ':*)",
+      "Bash(curl -s -o /dev/null -w \"root:%{http_code} \" http://localhost:8080/)",
+      "Bash(curl -s -o /dev/null -w \"main.js:%{http_code} \" http://localhost:8080/assets/main.js)",
+      "Bash(curl -s -o /dev/null -w \"jump:%{http_code}\" http://localhost:8080/games/jump.html)",
+      "Bash(curl -s http://localhost:8080/assets/main.js)",
+      "Bash(curl -s http://localhost:8080/assets/style.css)"
+    ]
+  }
+}

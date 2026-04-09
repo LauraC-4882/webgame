@@ -39,14 +39,14 @@
       <section class="panel home-hero">
         <div class="hero-copy">
           <p class="eyebrow">intro</p>
-          <h1>一个带赛博霓虹风格的小游戏主页</h1>
+          <h1>一个更稳定、更顺手改的小型网页游戏集合</h1>
           <p>
-            参考你的草图：首页顶部是 tabs，中间是 intro，下面是 2 列 6 个游戏块，
-            底部是你画的角色们。每个 block 都直接跳到对应游戏文件。
+            现在首页负责统一导航、视觉风格和入口说明，下面 6 个游戏页都共用同一套
+            前端壳和本地排行榜逻辑，后续继续加玩法也会更容易维护。
           </p>
           <div class="hero-actions">
-            <a class="cta-primary" href="./games/jump.html">start playing</a>
-            <a class="cta-secondary" href="./signup.html">create account</a>
+            <a class="cta-primary" href="./games/jump.html">开始试玩</a>
+            <a class="cta-secondary" href="./signup.html">创建昵称</a>
           </div>
         </div>
 
@@ -159,44 +159,9 @@
         </a>
       </section>
 
-      <section class="panel mascot-strip">
+      <section class="panel mascot-strip" id="characters-section">
         <p class="mascot-title">our characters</p>
-        <div class="mascot-row">
-          <div class="mascot-card">
-            <div class="mascot skull">
-              <div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="mouth"></div><div class="body"></div><div class="leg leg-l"></div><div class="leg leg-r"></div>
-            </div>
-            <span class="mascot-name">skully</span>
-          </div>
-
-          <div class="mascot-card">
-            <div class="mascot fluff">
-              <div class="extra"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div>
-            </div>
-            <span class="mascot-name">fluff</span>
-          </div>
-
-          <div class="mascot-card">
-            <div class="mascot blob">
-              <div class="extra"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="arm arm-l"></div><div class="arm arm-r"></div>
-            </div>
-            <span class="mascot-name">bloby</span>
-          </div>
-
-          <div class="mascot-card">
-            <div class="mascot buddy">
-              <div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="arm arm-l"></div><div class="arm arm-r"></div><div class="leg leg-l"></div><div class="leg leg-r"></div>
-            </div>
-            <span class="mascot-name">buddy</span>
-          </div>
-
-          <div class="mascot-card">
-            <div class="mascot crown">
-              <div class="extra"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="leg leg-l"></div><div class="leg leg-r"></div>
-            </div>
-            <span class="mascot-name">crownie</span>
-          </div>
-        </div>
+        <div class="mascot-row" id="mascot-row"></div>
       </section>
     </main>
 
@@ -226,5 +191,6 @@
       </div>
     </footer>
   </div>
+  <script src="./assets/main.js"></script>
 </body>
 </html>
