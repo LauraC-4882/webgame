@@ -895,7 +895,7 @@ async function renderLeaderboard(node) {
   if (cloudData && cloudData.length > 0) {
     node.innerHTML = buildLeaderboardHTML('🌐 全球排行榜', cloudData, best, true);
   } else {
-    node.innerHTML = buildLeaderboardHTML('📱 本地排行榜', localList, best, false);
+    node.innerHTML = buildLeaderboardHTML('🌐 全球排行榜', localList, best, false);
   }
 }
 
