@@ -4,19 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>消消乐</title>
-    <link rel="stylesheet" href="/site/assets/style.css">
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <header class="site-header"><h1>消消乐</h1><nav><a href="/site/index.html">返回</a></nav></header>
-    <main class="container">
-      <p>这是“消消乐”游戏的占位页。实现合并/消除方块的逻辑。</p>
-      <div id="game-area" class="game-area" data-game="match3"></div>
-      <div class="game-controls">
-        <button id="start-btn">开始</button>
-        <div class="score">分数: <span id="score">0</span></div>
-      </div>
-      <section class="leaderboard" id="leaderboard"></section>
+    <header class="site-header">
+      <h1>消消乐</h1>
+      <nav>
+        <a href="index.html">首页</a>
+        <a href="match3.html">刷新本页</a>
+      </nav>
+    </header>
+    <main class="container layout-two">
+      <section class="game-shell">
+        <h2 class="game-title">消消乐</h2>
+        <p class="game-subtitle">交换相邻方块，三个或以上相同即可消除并连锁下落。</p>
+        <div id="game-area" class="game-area" data-game="match3"></div>
+        <div class="game-controls">
+          <button id="start-btn">开始游戏</button>
+          <button id="save-btn" class="secondary">保存分数</button>
+          <div class="score-box">分数：<span id="score">0</span></div>
+          <div class="score-box">状态：<span id="status">待机</span></div>
+        </div>
+      </section>
+      <aside>
+        <section class="leaderboard" id="leaderboard"></section>
+        <section class="leaderboard">
+          <h3>玩法提示</h3>
+          <ul class="tip-list" id="tips"></ul>
+        </section>
+      </aside>
     </main>
-    <script src="/site/assets/main.js"></script>
+    <script src="main.js"></script>
   </body>
 </html>

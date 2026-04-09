@@ -3,20 +3,37 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>跳一跳 — Jump</title>
-    <link rel="stylesheet" href="/site/assets/style.css">
+    <title>跳一跳</title>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <header class="site-header"><h1>跳一跳</h1><nav><a href="/site/index.html">返回</a></nav></header>
-    <main class="container">
-      <p>点击或空格开始跳跃并累积分数，尽可能跳得更高。</p>
-      <div id="game-area" class="game-area" data-game="jump"></div>
-      <div class="game-controls">
-        <button id="start-btn">开始</button>
-        <div class="score">分数: <span id="score">0</span></div>
-      </div>
-      <section class="leaderboard" id="leaderboard"></section>
+    <header class="site-header">
+      <h1>跳一跳</h1>
+      <nav>
+        <a href="index.html">首页</a>
+        <a href="jump.html">刷新本页</a>
+      </nav>
+    </header>
+    <main class="container layout-two">
+      <section class="game-shell">
+        <h2 class="game-title">跳一跳</h2>
+        <p class="game-subtitle">按住空格或长按屏幕蓄力，松手起跳。平台距离每次都不同。</p>
+        <div id="game-area" class="game-area" data-game="jump"></div>
+        <div class="game-controls">
+          <button id="start-btn">开始游戏</button>
+          <button id="save-btn" class="secondary">保存分数</button>
+          <div class="score-box">分数：<span id="score">0</span></div>
+          <div class="score-box">状态：<span id="status">待机</span></div>
+        </div>
+      </section>
+      <aside>
+        <section class="leaderboard" id="leaderboard"></section>
+        <section class="leaderboard">
+          <h3>玩法提示</h3>
+          <ul class="tip-list" id="tips"></ul>
+        </section>
+      </aside>
     </main>
-    <script src="/site/assets/main.js"></script>
+    <script src="main.js"></script>
   </body>
 </html>

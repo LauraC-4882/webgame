@@ -3,41 +3,72 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Webgame - 首页</title>
-    <link rel="stylesheet" href="/site/assets/style.css">
+    <title>Webgame - Cyberpunk Arcade</title>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <header class="site-header">
       <h1>Webgame</h1>
       <nav>
-        <a href="/site/index.html">首页</a>
-        <a href="/site/app.html#jump">跳一跳</a>
-        <a href="/site/app.html#connect">连连看</a>
-        <a href="/site/app.html#memory">记忆力游戏</a>
-        <a href="/site/app.html#runner">跑酷</a>
-        <a href="/site/app.html#match3">消消乐</a>
-        <a href="/site/app.html#merge">合成游戏</a>
-        <a class="auth" href="/site/login.html">登录</a>
-        <a class="auth" href="/site/signup.html">注册</a>
+        <a href="index.html">首页</a>
+        <a href="jump.html">跳一跳</a>
+        <a href="connect.html">解缠线</a>
+        <a href="memory.html">记忆翻翻</a>
+        <a href="runner.html">跑酷</a>
+        <a href="match3.html">消消乐</a>
+        <a href="merge.html">合成看</a>
+        <a class="auth" href="login.html">登录</a>
+        <a class="auth" href="signup.html">注册</a>
       </nav>
     </header>
 
     <main class="container">
-      <section class="intro">
-        <h2>六款小游戏</h2>
-        <p>点击上方链接进入任意游戏页面。每个页面包含小游戏占位符，你可以在此基础上实现完整玩法。</p>
+      <section class="hero">
+        <section class="intro hero-copy">
+          <h2>赛博霓虹小游戏站</h2>
+          <p>所有页面都换成了 cyberpunk 风格背景，并补齐为 6 款真正可玩的轻量小游戏：蓄力跳台、解缠线、记忆翻牌、横版跑酷、可爱方块消消乐、六级合成进化。</p>
+          <div class="badge-row">
+            <span class="badge">可爱风图标</span>
+            <span class="badge">键盘 + 鼠标 + 触屏</span>
+            <span class="badge">本地排行榜</span>
+            <span class="badge">开箱即玩</span>
+          </div>
+        </section>
+        <aside class="hero-art panel">
+          <div class="center-message">
+            <div class="toast">Neon skyline online</div>
+            <div class="toast">Cute arcade mode</div>
+          </div>
+          <div class="cityline"></div>
+        </aside>
       </section>
 
       <section class="games-grid">
-        <a class="game-card" href="/site/games/jump.html">跳一跳</a>
-        <a class="game-card" href="/site/games/connect.html">连连看</a>
-        <a class="game-card" href="/site/games/memory.html">记忆力游戏</a>
-        <a class="game-card" href="/site/games/runner.html">跑酷</a>
-        <a class="game-card" href="/site/games/match3.html">消消乐</a>
-        <a class="game-card" href="/site/games/merge.html">合成游戏</a>
+        <a class="game-card" href="jump.html">
+          <strong>跳一跳</strong>
+          <span>按住蓄力，跳向不同距离的平台</span>
+        </a>
+        <a class="game-card" href="connect.html">
+          <strong>解缠线</strong>
+          <span>拖动节点，把交叉线路全部解开</span>
+        </a>
+        <a class="game-card" href="memory.html">
+          <strong>记忆翻翻</strong>
+          <span>10 秒记住 20 张卡牌，再配对翻开</span>
+        </a>
+        <a class="game-card" href="runner.html">
+          <strong>跑酷</strong>
+          <span>跳过障碍，收集星星，速度会越来越快</span>
+        </a>
+        <a class="game-card" href="match3.html">
+          <strong>消消乐</strong>
+          <span>交换相邻萌系方块，三个相同即可消除</span>
+        </a>
+        <a class="game-card" href="merge.html">
+          <strong>合成看</strong>
+          <span>两两相同合成更高级，一直进化到 6 级</span>
+        </a>
       </section>
     </main>
-
-    <script src="/site/assets/main.js"></script>
   </body>
 </html>
