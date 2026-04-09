@@ -1,0 +1,20 @@
+:root{
+  --bg:#f6f8fa;
+  --card:#ffffff;
+  --accent:#2b7cff;
+  --muted:#666;
+}
+*{box-sizing:border-box}
+body{font-family:Segoe UI, Roboto, "Microsoft Yahei", sans-serif;margin:0;background:var(--bg);color:#111}
+.site-header{background:#fff;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;box-shadow:0 1px 0 rgba(0,0,0,0.06)}
+.site-header h1{margin:0;font-size:1.1rem}
+.site-header nav a{margin-left:12px;color:var(--muted);text-decoration:none}
+.site-header nav a.auth{color:var(--accent);font-weight:600}
+.container{max-width:980px;margin:28px auto;padding:0 16px}
+.games-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-top:18px}
+.game-card{display:flex;align-items:center;justify-content:center;height:120px;background:var(--card);border-radius:8px;text-decoration:none;color:#111;font-weight:700;box-shadow:0 6px 18px rgba(11,22,46,0.06)}
+.intro p{color:var(--muted)}
+.auth-forms{max-width:420px;margin:24px auto;background:var(--card);padding:16px;border-radius:8px;box-shadow:0 6px 18px rgba(11,22,46,0.04)}
+.auth-forms label{display:block;margin:8px 0 4px;color:var(--muted)}
+.auth-forms input{width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef}
+.auth-forms button{margin-top:12px;padding:10px 14px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-weight:600}
