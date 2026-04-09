@@ -882,51 +882,124 @@ function getMascotState(cvs) {
 
 function bindMascotInteraction(cvs, id) {
   const state = getMascotState(cvs);
-
-  // 悬浮
-  cvs.addEventListener('mouseenter', () => { state.hover = true; });
-  cvs.addEventListener('mouseleave', () => { state.hover = false; });
-
-  // 点击
-  cvs.addEventListener('click', () => {
-    state.clickT = 40; // 40帧的反应动画
-    SFX.init();
-    // 根据性格播放不同音效
-    const sounds = { bobi: 'correct', boba: 'jump', bobo: 'tick', babi: 'wrong', babo: 'flip' };
-    SFX.play(sounds[id] || 'coin');
-  });
-
-  // 触摸点击
-  cvs.addEventListener('touchstart', (e) => {
-    e.preventDefault();
+  const playClick = () => {
     state.clickT = 40;
     SFX.init();
     const sounds = { bobi: 'correct', boba: 'jump', bobo: 'tick', babi: 'wrong', babo: 'flip' };
     SFX.play(sounds[id] || 'coin');
-  }, { passive: false });
+  };
+  const triggerShake = () => {
+    if (state.shakeT > 0) return; // 防抖
+    state.shakeT = 50;
+    state.shakeHistory = [];
+    SFX.init();
+    SFX.play('combo');
+  };
 
-  // 摇晃检测（快速来回移动鼠标）
+  // === 鼠标事件 ===
+  cvs.addEventListener('mouseenter', () => { state.hover = true; });
+  cvs.addEventListener('mouseleave', () => { state.hover = false; });
+  cvs.addEventListener('click', playClick);
+
+  // 鼠标摇晃检测
   cvs.addEventListener('mousemove', (e) => {
     const now = Date.now();
     state.shakeHistory.push({ x: e.offsetX, t: now });
-    // 只保留最近300ms
     state.shakeHistory = state.shakeHistory.filter(p => now - p.t < 300);
     if (state.shakeHistory.length >= 5) {
-      // 检查方向是否来回变化
       let changes = 0;
       for (let i = 2; i < state.shakeHistory.length; i++) {
         const d1 = state.shakeHistory[i-1].x - state.shakeHistory[i-2].x;
         const d2 = state.shakeHistory[i].x - state.shakeHistory[i-1].x;
         if (d1 * d2 < 0) changes++;
       }
-      if (changes >= 3) {
-        state.shakeT = 50; // 50帧的摇晃反应
-        state.shakeHistory = [];
-        SFX.init();
-        SFX.play('combo');
-      }
+      if (changes >= 3) triggerShake();
     }
   });
+
+  // === 触摸事件（手机） ===
+  let touchStartTime = 0;
+  let touchMoved = false;
+
+  // 触摸按下 = 悬浮开始
+  cvs.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    state.hover = true;
+    touchStartTime = Date.now();
+    touchMoved = false;
+    SFX.init();
+  }, { passive: false });
+
+  // 触摸移动 = 摇晃检测
+  cvs.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    touchMoved = true;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rect = cvs.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const now = Date.now();
+    state.shakeHistory.push({ x, t: now });
+    state.shakeHistory = state.shakeHistory.filter(p => now - p.t < 400);
+    if (state.shakeHistory.length >= 4) {
+      let changes = 0;
+      for (let i = 2; i < state.shakeHistory.length; i++) {
+        const d1 = state.shakeHistory[i-1].x - state.shakeHistory[i-2].x;
+        const d2 = state.shakeHistory[i].x - state.shakeHistory[i-1].x;
+        if (d1 * d2 < 0) changes++;
+      }
+      if (changes >= 2) triggerShake();
+    }
+  }, { passive: false });
+
+  // 触摸松开
+  cvs.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    state.hover = false;
+    // 短按 = 点击（没有大幅移动且时长<400ms）
+    if (!touchMoved && Date.now() - touchStartTime < 400) {
+      playClick();
+    }
+  }, { passive: false });
+
+  // === 手机物理摇晃（陀螺仪）===
+  // 给每个角色绑定全局摇晃检测（只需绑一次）
+  if (!bindMascotInteraction._shakeSetup) {
+    bindMascotInteraction._shakeSetup = true;
+    bindMascotInteraction._targets = [];
+    let lastAcc = { x: 0, y: 0, z: 0 };
+    let shakeCount = 0;
+    let lastShakeTime = 0;
+
+    window.addEventListener('devicemotion', (e) => {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      const dx = Math.abs(acc.x - lastAcc.x);
+      const dy = Math.abs(acc.y - lastAcc.y);
+      const dz = Math.abs(acc.z - lastAcc.z);
+      lastAcc = { x: acc.x || 0, y: acc.y || 0, z: acc.z || 0 };
+
+      if (dx + dy + dz > 25) {
+        const now = Date.now();
+        if (now - lastShakeTime > 800) {
+          shakeCount = 0;
+        }
+        shakeCount++;
+        lastShakeTime = now;
+        if (shakeCount >= 2) {
+          // 触发所有角色的摇晃反应
+          bindMascotInteraction._targets.forEach(({ state: s }) => {
+            s.shakeT = 50;
+            s.shakeHistory = [];
+          });
+          SFX.init();
+          SFX.play('combo');
+          shakeCount = 0;
+        }
+      }
+    });
+  }
+  bindMascotInteraction._targets.push({ state });
 }
 
 // 绘制交互反应（在drawMascot之后叠加）
