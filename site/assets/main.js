@@ -12,6 +12,37 @@ const WORLD = {
     desc: '集齐五种庆祝方式后出现的彩虹隐藏款。' }
 };
 
+// 丰富的赛博可爱图案库——match3/memory/merge共用
+const CYBER_ICONS = [
+  { face: '🤖', color: '#68d5ff', accent: '#8ef6d3', name: '机器宝' },
+  { face: '👾', color: '#7c8cff', accent: '#c0b8ff', name: '像素虫' },
+  { face: '🐱', color: '#ff8a5b', accent: '#ffd166', name: '赛博猫' },
+  { face: '🍡', color: '#ff6b9c', accent: '#ffc6d9', name: '糯米团' },
+  { face: '🌸', color: '#ffa0c8', accent: '#ffd6e8', name: '樱花酱' },
+  { face: '🍭', color: '#e070e0', accent: '#f0b0f0', name: '棒棒糖' },
+  { face: '⭐', color: '#ffd166', accent: '#fff0b0', name: '小星星' },
+  { face: '🔮', color: '#a080ff', accent: '#d0c0ff', name: '水晶球' },
+  { face: '🧊', color: '#80d8ff', accent: '#c0f0ff', name: '冰冰块' },
+  { face: '🎀', color: '#ff80a0', accent: '#ffc0d0', name: '蝴蝶结' },
+  { face: '🌈', color: '#ff9060', accent: '#ffc090', name: '彩虹糖' },
+  { face: '🫧', color: '#90d0ff', accent: '#c0e8ff', name: '泡泡仔' },
+  { face: '🍩', color: '#e0a060', accent: '#f0d0a0', name: '甜甜圈' },
+  { face: '🎃', color: '#ff9040', accent: '#ffc080', name: '南瓜头' },
+  { face: '💎', color: '#60c0ff', accent: '#a0e0ff', name: '钻石君' },
+];
+
+// 得分弹出特效工具
+function showScorePopup(container, text, x, y, color) {
+  const popup = el('div', 'score-popup');
+  popup.textContent = text;
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+  popup.style.color = color || 'var(--warm-soft)';
+  container.style.position = 'relative';
+  container.appendChild(popup);
+  setTimeout(() => popup.remove(), 900);
+}
+
 const GAME_META = {
   connect: { label: '解线大师', desc: '一堆乱线，拖一拖理清人生。' },
   jump: { label: '蓄力弹射椅', desc: '按住蓄力松手起飞，力度全靠缘分。' },
@@ -2059,21 +2090,21 @@ function connectGame(container, api) {
 }
 
 function match3Game(container, api) {
-  const wrap = createGameShell('Match 3', '交换图块，做出连续消除。达到目标分数过关！');
+  const wrap = createGameShell('消消乐但有压力', '三个连一起就爆，步数有限。');
   const statusLine = el('div', 'cw-subinfo', '');
   const boardNode = el('div', 'm3-board');
   wrap.append(statusLine, boardNode);
   container.appendChild(wrap);
   let cfg = {}, size = 7, movesLeft = 30, targetScore = 300;
-  let types = [];
+  let icons = []; // 当前关卡使用的图案子集
   let board = [], selected = null, busy = false, timers = [], chainDepth = 0;
 
-  function mascotFor(id) {
-    return WORLD.mascots.find(item => item.id === id);
+  function iconFor(idx) {
+    return icons[idx] || icons[0];
   }
 
   function randomType() {
-    return choice(types);
+    return Math.floor(Math.random() * icons.length);
   }
 
   function matches() {
@@ -2113,12 +2144,12 @@ function match3Game(container, api) {
     boardNode.innerHTML = '';
     for (let row = 0; row < size; row++) {
       for (let col = 0; col < size; col++) {
-        const mascot = mascotFor(board[row][col]);
+        const icon = iconFor(board[row][col]);
         const cell = el('button', `m3-cell${selected?.row === row && selected?.col === col ? ' selected' : ''}`);
         cell.type = 'button';
-        cell.style.setProperty('--mc', mascot.color);
-        cell.style.setProperty('--ma', mascot.accent);
-        cell.innerHTML = `<span>${mascot.face}</span>`;
+        cell.style.setProperty('--mc', icon.color);
+        cell.style.setProperty('--ma', icon.accent);
+        cell.innerHTML = `<span>${icon.face}</span>`;
         cell.addEventListener('click', () => clickCell(row, col));
         boardNode.appendChild(cell);
       }
@@ -2148,15 +2179,25 @@ function match3Game(container, api) {
       return render();
     }
     chainDepth++;
+    // 找到消除区域的中心位置用于弹出得分
+    let sumR = 0, sumC = 0;
     set.forEach(key => {
       const [row, col] = key.split('-').map(Number);
+      sumR += row; sumC += col;
       board[row][col] = null;
     });
     const pts = set.size * 10 * chainDepth;
     api.addScore(pts);
     SFX.play(chainDepth > 1 ? 'combo' : 'match');
+    // 得分弹出特效
+    const avgR = sumR / set.size, avgC = sumC / set.size;
+    const cellSz = boardNode.clientWidth / size;
+    const popX = avgC * cellSz + cellSz / 2;
+    const popY = avgR * cellSz;
+    const popColor = chainDepth > 1 ? '#ff6b9c' : '#ffd166';
+    showScorePopup(boardNode, `+${pts}${chainDepth > 1 ? ' x' + chainDepth : ''}`, popX, popY, popColor);
     render();
-    timers.push(setTimeout(() => { collapse(); render(); cascade(); }, 170));
+    timers.push(setTimeout(() => { collapse(); render(); cascade(); }, 200));
   }
 
   function clickCell(row, col) {
@@ -2178,15 +2219,21 @@ function match3Game(container, api) {
       size = cfg.size || 7;
       movesLeft = cfg.moves || 25;
       targetScore = cfg.target || 300;
-      types = WORLD.mascots.slice(0, cfg.types || 5).map(m => m.id);
+      // 从图案库选取本关使用的图案数量
+      const numTypes = cfg.types || 5;
+      icons = shuffle([...CYBER_ICONS]).slice(0, numTypes);
       boardNode.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
       board = Array.from({ length: size }, () => Array.from({ length: size }, () => randomType()));
-      while (matches().size) matches().forEach(key => {
+      let safety = 0;
+      while (matches().size && safety++ < 200) matches().forEach(key => {
         const [row, col] = key.split('-').map(Number);
         board[row][col] = randomType();
       });
       selected = null; busy = false; chainDepth = 0;
       api.setScore(0);
+      // 背景主题
+      const area = container.closest('.game-area');
+      if (area) area.className = `game-area bg-theme-${cfg.bg || 0}`;
       updateStatus();
       render();
     },
@@ -2195,7 +2242,7 @@ function match3Game(container, api) {
 }
 
 function memoryGame(container, api) {
-  const wrap = createGameShell('Memory', '开始后会有 8 秒预览时间，随后要把 16 张卡片两两配对。');
+  const wrap = createGameShell('你的记忆靠谱吗', '先看几秒然后全扣上，翻错太多就寄了。');
   const info = el('div', 'cw-subinfo', '预览结束后才能翻牌。');
   const grid = el('div', 'memory-grid');
   wrap.append(info, grid);
@@ -2211,11 +2258,14 @@ function memoryGame(container, api) {
     grid.innerHTML = '';
     deck.forEach((card, index) => {
       const faceUp = open.includes(index) || matched.has(index);
-      const node = el('button', `memory-card${faceUp ? ' face-up' : ''}`);
+      const isMatched = matched.has(index);
+      const node = el('button', `memory-card${faceUp ? ' face-up' : ''}${isMatched ? ' matched' : ''}`);
       node.type = 'button';
-      node.style.setProperty('--mc', card.mascot.color);
-      node.style.setProperty('--ma', card.mascot.accent);
-      node.innerHTML = `<span class="memory-front">${card.mascot.face}</span><span class="memory-back">?</span>`;
+      node.style.setProperty('--mc', card.icon.color);
+      node.style.setProperty('--ma', card.icon.accent);
+      node.innerHTML = `
+        <span class="memory-front">${card.icon.face}<br><small style="font-size:.55em;opacity:.7">${card.icon.name}</small></span>
+        <span class="memory-back">❓</span>`;
       node.addEventListener('click', () => flip(index));
       grid.appendChild(node);
     });
@@ -2252,7 +2302,14 @@ function memoryGame(container, api) {
       open = []; locked = false;
       api.addScore(25);
       SFX.play('correct');
-      info.textContent = `已配对 ${matched.size / 2}/${totalPairs}`;
+      info.textContent = `✓ 配对 ${matched.size / 2}/${totalPairs} — ${deck[a].icon.name}！`;
+      // 得分弹出
+      const cards = grid.querySelectorAll('.memory-card');
+      if (cards[a]) {
+        const rect = cards[a].getBoundingClientRect();
+        const gRect = grid.getBoundingClientRect();
+        showScorePopup(grid, '+25', rect.left - gRect.left + rect.width / 2, rect.top - gRect.top, deck[a].icon.color);
+      }
       render();
       if (matched.size === deck.length) api.levelComplete(Math.max(0, (maxWrong - mistakes) * 10));
       return;
@@ -2274,11 +2331,12 @@ function memoryGame(container, api) {
       maxWrong = cfg.maxWrong || 7;
       mistakes = 0;
       const previewTime = cfg.preview || 8;
-      // 根据配对数生成卡牌
-      deck = shuffle(Array.from({ length: totalPairs }, (_, index) => {
-        const mascot = WORLD.mascots[index % WORLD.mascots.length];
-        return [{ pair: `${mascot.id}-${index}`, mascot }, { pair: `${mascot.id}-${index}`, mascot }];
-      }).flat());
+      // 根据配对数从图案库生成卡牌（每关图案随机不同）
+      const cardIcons = shuffle([...CYBER_ICONS]).slice(0, totalPairs);
+      deck = shuffle(cardIcons.flatMap((icon, index) => [
+        { pair: `card-${index}`, icon },
+        { pair: `card-${index}`, icon }
+      ]));
       // 调整网格列数
       const cols = totalPairs <= 6 ? 4 : totalPairs <= 10 ? 5 : 6;
       grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
@@ -2299,7 +2357,7 @@ function memoryGame(container, api) {
 }
 
 function mergeGame(container, api) {
-  const wrap = createGameShell('Merge', '点击空位放置棋子。达到目标分数过关！');
+  const wrap = createGameShell('合成大作战', '两个一样的碰一起就进化。棋盘满了你就知道了。');
   const nextBox = el('div', 'cw-subinfo', '');
   const grid = el('div', 'merge-grid');
   wrap.append(nextBox, grid);
@@ -2313,15 +2371,15 @@ function mergeGame(container, api) {
   }
 
   function render() {
-    nextBox.innerHTML = `下一枚：<span class="merge-next" style="--mc:${nextPiece.mascot.color};--ma:${nextPiece.mascot.accent}">${nextPiece.mascot.face} Lv.${nextPiece.level}</span>`;
+    nextBox.innerHTML = `下一枚：<span class="merge-next" style="--mc:${nextPiece.icon.color};--ma:${nextPiece.icon.accent}">${nextPiece.icon.face} Lv.${nextPiece.level}</span>`;
     grid.innerHTML = '';
     board.flat().forEach((cell, index) => {
       const btn = el('button', `merge-cell${cell ? ' filled' : ''}`);
       btn.type = 'button';
       if (cell) {
-        btn.style.setProperty('--mc', cell.mascot.color);
-        btn.style.setProperty('--ma', cell.mascot.accent);
-        btn.innerHTML = `<span>${cell.mascot.face}</span><small>Lv.${cell.level}</small>`;
+        btn.style.setProperty('--mc', cell.icon.color);
+        btn.style.setProperty('--ma', cell.icon.accent);
+        btn.innerHTML = `<span>${cell.icon.face}</span><small style="font-size:.7em">${cell.icon.name} Lv.${cell.level}</small>`;
       } else btn.innerHTML = '<span class="merge-empty">+</span>';
       btn.addEventListener('click', () => place(Math.floor(index / size), index % size));
       grid.appendChild(btn);
@@ -2347,7 +2405,7 @@ function mergeGame(container, api) {
         const key = `${nr}-${nc}`;
         const next = board[nr][nc];
         if (!next || seen.has(key)) return;
-        if (next.level === cell.level && next.mascot.id === cell.mascot.id) {
+        if (next.level === cell.level && next.icon.name === cell.icon.name) {
           seen.add(key);
           queue.push([nr, nc]);
         }
@@ -2367,9 +2425,13 @@ function mergeGame(container, api) {
           const found = group(row, col, cell);
           if (found.length >= 2) {
             found.slice(1).forEach(([r, c]) => board[r][c] = null);
-            board[row][col] = { mascot: cell.mascot, level: Math.min(6, cell.level + 1) };
-            api.addScore(cell.level * found.length * 15);
+            const mergeScore = cell.level * found.length * 15;
+            board[row][col] = { icon: cell.icon, level: Math.min(6, cell.level + 1) };
+            api.addScore(mergeScore);
             SFX.play('merge');
+            // 得分弹出
+            const cellSz = grid.clientWidth / size;
+            showScorePopup(grid, `+${mergeScore}`, col * cellSz + cellSz / 2, row * cellSz, cell.icon.color);
             changed = true;
           }
         }
@@ -2383,14 +2445,14 @@ function mergeGame(container, api) {
       for (let col = 0; col < size; col++) {
         const cell = board[row][col];
         if (!cell) return true;
-        if (neighbors(row, col).some(([nr, nc]) => board[nr][nc] && board[nr][nc].level === cell.level && board[nr][nc].mascot.id === cell.mascot.id)) return true;
+        if (neighbors(row, col).some(([nr, nc]) => board[nr][nc] && board[nr][nc].level === cell.level && board[nr][nc].icon.name === cell.icon.name)) return true;
       }
     }
     return false;
   }
 
   function updateInfo() {
-    nextBox.innerHTML = `下一枚：<span class="merge-next" style="--mc:${nextPiece.mascot.color};--ma:${nextPiece.mascot.accent}">${nextPiece.mascot.face} Lv.${nextPiece.level}</span> · 步数 ${movesLeft} · 目标 ${targetScore}`;
+    nextBox.innerHTML = `下一枚：<span class="merge-next" style="--mc:${nextPiece.icon.color};--ma:${nextPiece.icon.accent}">${nextPiece.icon.face} ${nextPiece.icon.name} Lv.${nextPiece.level}</span> · 步数 ${movesLeft} · 目标 ${targetScore}`;
   }
 
   function place(row, col) {
@@ -2400,7 +2462,7 @@ function mergeGame(container, api) {
     settle();
     movesLeft--;
     const maxSpawn = cfg.maxSpawn || 1;
-    nextPiece = { level: Math.random() < 0.7 ? 1 : Math.min(maxSpawn, 2), mascot: choice(WORLD.mascots) };
+    nextPiece = { level: Math.random() < 0.7 ? 1 : Math.min(maxSpawn, 2), icon: choice(CYBER_ICONS) };
     updateInfo();
     render();
     if (api.getScore() >= targetScore) return api.levelComplete(movesLeft * 5);
@@ -2420,7 +2482,7 @@ function mergeGame(container, api) {
       const area = container.closest('.game-area');
       if (area) area.className = `game-area bg-theme-${cfg.bg || 0}`;
       board = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
-      nextPiece = { level: 1, mascot: choice(WORLD.mascots) };
+      nextPiece = { level: 1, icon: choice(CYBER_ICONS) };
       api.setScore(0);
       api.setStatus(`第${api.level+1}关 — ${size}×${size}棋盘 目标${targetScore}分`);
       updateInfo();
