@@ -716,10 +716,7 @@ function initGamePage() {
         saveProgress({ highestLevel: level, bestTotal: Math.max(totalScore, getProgress().bestTotal || 0) });
         showCelebration(gameArea, totalScore, (name) => {
           if (name) {
-            const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-            list.push({ name, score: Math.round(totalScore), time: Date.now() });
-            list.sort((a, b) => b.score - a.score || a.time - b.time);
-            localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
+            saveScore(name, totalScore);
             statusNode.textContent = `🎉 全部通关！${escapeHtml(name)} 总分 ${totalScore}`;
           } else {
             statusNode.textContent = `全部通关！总分 ${totalScore}`;
@@ -747,12 +744,7 @@ function initGamePage() {
           if (totalScore > 0) {
             saveBest(totalScore);
             showCelebration(gameArea, totalScore, (name) => {
-              if (name) {
-                const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-                list.push({ name, score: Math.round(totalScore), time: Date.now() });
-                list.sort((a, b) => b.score - a.score || a.time - b.time);
-                localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
-              }
+              if (name) saveScore(name, totalScore);
               renderLeaderboard(boardNode);
               statusNode.textContent = text || '闯关结束。';
             });
@@ -808,10 +800,7 @@ function initGamePage() {
     if (save && (totalScore + score) > 0) {
       showCelebration(gameArea, totalScore + score, (name) => {
         if (name) {
-          const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-          list.push({ name, score: Math.round(totalScore + score), time: Date.now() });
-          list.sort((a, b) => b.score - a.score || a.time - b.time);
-          localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
+          saveScore(name, totalScore + score);
           statusNode.textContent = `${escapeHtml(name)} 的分数已保存！`;
         } else {
           statusNode.textContent = '本局已结束。';
@@ -849,26 +838,77 @@ function genericGame(container) {
   return { start() {}, stop() {} };
 }
 
-function renderLeaderboard(node) {
-  if (!node) return;
-  const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-  const best = Number(localStorage.getItem(bestKey()) || 0);
-  node.innerHTML = `
-    <h3>本地排行榜</h3>
-    <p class="muted">${WORLD.subtitle}</p>
-    <div class="world-best">当前页面最佳分数：<strong>${best}</strong></div>
-    ${list.length ? `<ol>${list.map(item => `<li>${escapeHtml(item.name)}<span>${item.score}</span></li>`).join('')}</ol>` : '<div class="muted">还没有分数记录，来当第一名。</div>'}
-  `;
+/* ==========================================================
+   SUPABASE 云端排行榜
+   在 SUPABASE_URL 和 SUPABASE_KEY 填入你的项目信息即可启用
+   没填就只用 localStorage（和以前一样）
+   ========================================================== */
+const SUPABASE_URL = '';  // ← 填入你的 Supabase 项目 URL
+const SUPABASE_KEY = '';  // ← 填入你的 anon public key
+
+let _supabase = null;
+function getSupabase() {
+  if (_supabase) return _supabase;
+  if (!SUPABASE_URL || !SUPABASE_KEY || typeof supabase === 'undefined') return null;
+  _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return _supabase;
 }
 
-function saveScoreToLeaderboard(score, node) {
-  const name = prompt('输入要保存到本地排行榜的昵称', '匿名玩家') || '匿名玩家';
-  const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-  list.push({ name, score: Math.round(score), time: Date.now() });
-  list.sort((a, b) => b.score - a.score || a.time - b.time);
-  localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
-  saveBest(score);
-  renderLeaderboard(node);
+function gameSlug() {
+  // 从路径提取游戏名：/games/jump.html → jump
+  const m = location.pathname.match(/\/([a-z0-9]+)\.html/i);
+  return m ? m[1] : 'home';
+}
+
+// 云端保存分数
+async function cloudSaveScore(name, score) {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    await sb.from('scores').insert({ game: gameSlug(), name, score: Math.round(score), created_at: new Date().toISOString() });
+  } catch (e) { console.warn('云端保存失败:', e); }
+}
+
+// 云端加载排行榜
+async function cloudLoadScores() {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data } = await sb.from('scores').select('name, score, created_at')
+      .eq('game', gameSlug())
+      .order('score', { ascending: false })
+      .limit(20);
+    return data;
+  } catch (e) { console.warn('云端加载失败:', e); return null; }
+}
+
+async function renderLeaderboard(node) {
+  if (!node) return;
+  const localList = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
+  const best = Number(localStorage.getItem(bestKey()) || 0);
+
+  // 先显示本地数据（快速）
+  node.innerHTML = buildLeaderboardHTML('加载中...', localList, best, false);
+
+  // 尝试加载云端数据
+  const cloudData = await cloudLoadScores();
+  if (cloudData && cloudData.length > 0) {
+    node.innerHTML = buildLeaderboardHTML('🌐 全球排行榜', cloudData, best, true);
+  } else {
+    node.innerHTML = buildLeaderboardHTML('📱 本地排行榜', localList, best, false);
+  }
+}
+
+function buildLeaderboardHTML(title, list, best, isCloud) {
+  return `
+    <h3>${title}</h3>
+    <div class="world-best">你的最佳：<strong>${best}</strong>${isCloud ? ' · <span style="color:var(--cool);font-size:.8rem">数据已同步到云端</span>' : ''}</div>
+    ${list.length ? `<ol>${list.map((item, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+      const time = item.created_at ? new Date(item.created_at).toLocaleDateString() : '';
+      return `<li><span class="lb-rank">${medal}</span> <span class="lb-name">${escapeHtml(item.name)}</span> <span class="lb-score">${item.score}</span>${time ? `<span class="lb-time">${time}</span>` : ''}</li>`;
+    }).join('')}</ol>` : '<div class="muted">还没有分数记录，来当第一名。</div>'}
+  `;
 }
 
 function leaderboardKey() {
@@ -882,6 +922,18 @@ function bestKey() {
 function saveBest(score) {
   const best = Number(localStorage.getItem(bestKey()) || 0);
   if (score > best) localStorage.setItem(bestKey(), String(Math.round(score)));
+}
+
+// 保存分数（本地 + 云端）
+function saveScore(name, score) {
+  // 本地
+  const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
+  list.push({ name, score: Math.round(score), time: Date.now() });
+  list.sort((a, b) => b.score - a.score || a.time - b.time);
+  localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 20)));
+  saveBest(score);
+  // 云端
+  cloudSaveScore(name, score);
 }
 
 function createGameShell(title, text) {
