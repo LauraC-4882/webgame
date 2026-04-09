@@ -21,7 +21,279 @@ const GAME_META = {
   runner: { label: 'Runner', desc: '点击或空格起跳，躲避障碍。' }
 };
 
+/* ==========================================================
+   AUDIO ENGINE — Web Audio API 合成音效，无需外部文件
+   ========================================================== */
+const SFX = {
+  ctx: null, master: null, muted: false,
+  init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.35;
+    this.master.connect(this.ctx.destination);
+  },
+  play(name) {
+    if (this.muted || !this.ctx) return;
+    const fn = this.sounds[name];
+    if (fn) fn(this.ctx, this.master);
+  },
+  toggle() { this.muted = !this.muted; return this.muted; },
+  // 每个音效是一个函数：创建振荡器→连接→自动停止
+  sounds: {
+    jump(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'square'; o.frequency.setValueAtTime(220, n); o.frequency.linearRampToValueAtTime(660, n+0.1);
+      g.gain.setValueAtTime(0.3, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.12);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.12);
+    },
+    land(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'triangle'; o.frequency.value = 90;
+      g.gain.setValueAtTime(0.4, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.08);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.08);
+    },
+    match(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'sine'; o.frequency.setValueAtTime(880, n); o.frequency.setValueAtTime(1100, n+0.06);
+      g.gain.setValueAtTime(0.25, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.15);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.15);
+    },
+    combo(cx, out) {
+      [660, 880, 1100].forEach((freq, i) => {
+        const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime + i * 0.06;
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.08);
+        o.connect(g).connect(out); o.start(n); o.stop(n+0.08);
+      });
+    },
+    merge(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'triangle'; o.frequency.setValueAtTime(120, n); o.frequency.linearRampToValueAtTime(440, n+0.15);
+      g.gain.setValueAtTime(0.35, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.2);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.2);
+    },
+    flip(cx, out) {
+      const buf = cx.createBuffer(1, cx.sampleRate * 0.03, cx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+      const src = cx.createBufferSource(), g = cx.createGain(), n = cx.currentTime;
+      src.buffer = buf; g.gain.setValueAtTime(0.2, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.03);
+      src.connect(g).connect(out); src.start(n);
+    },
+    correct(cx, out) {
+      [660, 880].forEach((freq, i) => {
+        const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime + i * 0.08;
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.25, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.12);
+        o.connect(g).connect(out); o.start(n); o.stop(n+0.12);
+      });
+    },
+    wrong(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'square'; o.frequency.value = 150;
+      g.gain.setValueAtTime(0.2, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.2);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.2);
+    },
+    levelUp(cx, out) {
+      [523, 659, 784].forEach((freq, i) => {
+        const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime + i * 0.1;
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.25, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.25);
+        o.connect(g).connect(out); o.start(n); o.stop(n+0.25);
+      });
+    },
+    gameOver(cx, out) {
+      [440, 330, 220].forEach((freq, i) => {
+        const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime + i * 0.12;
+        o.type = 'sawtooth'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.15);
+        o.connect(g).connect(out); o.start(n); o.stop(n+0.15);
+      });
+    },
+    coin(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'square'; o.frequency.setValueAtTime(988, n); o.frequency.setValueAtTime(1318, n+0.04);
+      g.gain.setValueAtTime(0.2, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.1);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.1);
+    },
+    tick(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'sine'; o.frequency.value = 1000;
+      g.gain.setValueAtTime(0.12, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.02);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.02);
+    },
+    place(cx, out) {
+      const o = cx.createOscillator(), g = cx.createGain(), n = cx.currentTime;
+      o.type = 'triangle'; o.frequency.value = 440;
+      g.gain.setValueAtTime(0.2, n); g.gain.exponentialRampToValueAtTime(0.001, n+0.06);
+      o.connect(g).connect(out); o.start(n); o.stop(n+0.06);
+    },
+  }
+};
+
+/* ==========================================================
+   LEVEL CONFIGS — 每个游戏5关，难度递进
+   ========================================================== */
+const LEVEL_CONFIGS = {
+  jump: [
+    { gapMin: 100, gapMax: 170, wMin: 105, wMax: 150, target: 8,  bg: 0 },
+    { gapMin: 115, gapMax: 195, wMin: 90,  wMax: 135, target: 12, bg: 1 },
+    { gapMin: 130, gapMax: 210, wMin: 80,  wMax: 120, target: 16, bg: 2, moving: true },
+    { gapMin: 140, gapMax: 220, wMin: 75,  wMax: 110, target: 20, bg: 3, moving: true, crumble: true },
+    { gapMin: 150, gapMax: 240, wMin: 65,  wMax: 100, target: 0,  bg: 4, moving: true, crumble: true, wind: true },
+  ],
+  connect: [
+    { nodes: 5,  edges: 6,  time: 90,  bg: 0 },
+    { nodes: 6,  edges: 8,  time: 75,  bg: 1 },
+    { nodes: 7,  edges: 11, time: 60,  bg: 2 },
+    { nodes: 8,  edges: 14, time: 50,  bg: 3 },
+    { nodes: 9,  edges: 18, time: 40,  bg: 4 },
+  ],
+  match3: [
+    { size: 6, types: 4, target: 200,  moves: 30, bg: 0 },
+    { size: 7, types: 4, target: 400,  moves: 25, bg: 1 },
+    { size: 7, types: 5, target: 700,  moves: 22, bg: 2 },
+    { size: 8, types: 5, target: 1100, moves: 18, bg: 3 },
+    { size: 8, types: 5, target: 1600, moves: 15, bg: 4 },
+  ],
+  memory: [
+    { pairs: 6,  preview: 12, maxWrong: 8,  bg: 0 },
+    { pairs: 8,  preview: 10, maxWrong: 7,  bg: 1 },
+    { pairs: 10, preview: 8,  maxWrong: 6,  bg: 2 },
+    { pairs: 12, preview: 6,  maxWrong: 5,  bg: 3 },
+    { pairs: 15, preview: 4,  maxWrong: 4,  bg: 4 },
+  ],
+  merge: [
+    { size: 4, maxSpawn: 1, target: 200,  moves: 25, bg: 0 },
+    { size: 4, maxSpawn: 1, target: 500,  moves: 28, bg: 1 },
+    { size: 5, maxSpawn: 2, target: 1000, moves: 25, bg: 2 },
+    { size: 5, maxSpawn: 2, target: 1800, moves: 22, bg: 3 },
+    { size: 6, maxSpawn: 3, target: 3000, moves: 30, bg: 4 },
+  ],
+  runner: [
+    { speed: 4.5, accel: 0.15, obstFreq: 110, dist: 800,  bg: 0 },
+    { speed: 5.0, accel: 0.18, obstFreq: 95,  dist: 1200, bg: 1 },
+    { speed: 5.6, accel: 0.22, obstFreq: 80,  dist: 1800, bg: 2, doubleJump: true },
+    { speed: 6.2, accel: 0.25, obstFreq: 70,  dist: 2500, bg: 3, doubleJump: true, slide: true },
+    { speed: 7.0, accel: 0.28, obstFreq: 60,  dist: 0,    bg: 4, doubleJump: true, slide: true },
+  ],
+};
+
+/* ==========================================================
+   LEVEL SYSTEM — 闯关、生命、累计分数、关间过渡
+   ========================================================== */
+function progressKey() { return `progress:${location.pathname}`; }
+function getProgress() {
+  try { return JSON.parse(localStorage.getItem(progressKey()) || '{}'); } catch { return {}; }
+}
+function saveProgress(p) { localStorage.setItem(progressKey(), JSON.stringify(p)); }
+
+function showLevelComplete(container, lvl, lvlScore, totalScore, onNext) {
+  SFX.play('levelUp');
+  const ov = el('div', 'level-overlay');
+  ov.innerHTML = `
+    <div class="level-box">
+      <div class="level-star">★</div>
+      <div class="level-msg">第 ${lvl + 1} 关 通过!</div>
+      <div class="level-scores">本关 <strong>${lvlScore}</strong> · 累计 <strong>${totalScore}</strong></div>
+      <button class="level-next-btn">下一关 →</button>
+    </div>`;
+  container.closest('.game-main')?.appendChild(ov) || document.body.appendChild(ov);
+  const btn = ov.querySelector('.level-next-btn');
+  btn.onclick = () => { ov.remove(); onNext(); };
+  // 3秒后自动继续
+  const timer = setTimeout(() => { if (ov.parentNode) { ov.remove(); onNext(); } }, 4000);
+  btn.addEventListener('click', () => clearTimeout(timer), { once: true });
+}
+
+function showLevelFailed(container, lvl, lives, onRetry, onQuit) {
+  SFX.play('gameOver');
+  const ov = el('div', 'level-overlay');
+  ov.innerHTML = `
+    <div class="level-box">
+      <div class="level-star" style="color:#ff6b9c">✕</div>
+      <div class="level-msg">第 ${lvl + 1} 关 失败</div>
+      <div class="level-scores">剩余生命: ${'♥'.repeat(Math.max(0, lives))}</div>
+      ${lives > 0
+        ? '<button class="level-next-btn">重试本关</button><button class="level-quit-btn">结束闯关</button>'
+        : '<div style="color:var(--muted);margin:8px 0">生命耗尽</div><button class="level-quit-btn">结束闯关</button>'}
+    </div>`;
+  container.closest('.game-main')?.appendChild(ov) || document.body.appendChild(ov);
+  ov.querySelector('.level-next-btn')?.addEventListener('click', () => { ov.remove(); onRetry(); });
+  ov.querySelector('.level-quit-btn')?.addEventListener('click', () => { ov.remove(); onQuit(); });
+}
+
+/* ==========================================================
+   CANVAS BG THEMES — 5种背景主题随关卡变化
+   ========================================================== */
+function paintThemedBg(ctx, w, h, theme, t) {
+  t = t || 0;
+  const themes = [
+    // 0: Neon City (深蓝+网格)
+    () => {
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#0a1220'); g.addColorStop(1,'#101a2d');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      drawGrid(ctx,w,h,36,'rgba(104,213,255,0.06)');
+    },
+    // 1: Digital Rain (绿色矩阵雨)
+    () => {
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#040e08'); g.addColorStop(1,'#0a1a10');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(138,226,111,0.08)'; ctx.font = '10px monospace';
+      for (let i = 0; i < 40; i++) {
+        const x = (i * 29) % w, y = ((t * (1 + i % 3) + i * 47) % (h + 200)) - 100;
+        ctx.fillText(String.fromCharCode(0x30A0 + (i * 7 + t) % 60), x, y);
+      }
+      drawGrid(ctx,w,h,36,'rgba(138,226,111,0.04)');
+    },
+    // 2: Cyber Sunset (橙紫渐变)
+    () => {
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#1a0a1e'); g.addColorStop(0.5,'#201020'); g.addColorStop(1,'#180808');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(255,138,91,0.06)';
+      ctx.fillRect(0, h*0.4, w, 2);
+      ctx.fillRect(0, h*0.6, w, 1);
+      drawGrid(ctx,w,h,36,'rgba(255,138,91,0.05)');
+    },
+    // 3: Void Space (深空+星星)
+    () => {
+      ctx.fillStyle = '#050508'; ctx.fillRect(0,0,w,h);
+      for (let i = 0; i < 50; i++) {
+        const sx = (i * 137 + t * 0.1) % w, sy = (i * 89) % h;
+        const bright = 0.2 + Math.sin(t * 0.02 + i) * 0.15;
+        ctx.fillStyle = `rgba(255,255,255,${bright})`;
+        ctx.beginPath(); ctx.arc(sx, sy, 1 + (i % 3) * 0.5, 0, Math.PI*2); ctx.fill();
+      }
+    },
+    // 4: Glitch Core (RGB抖动+随机色块)
+    () => {
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#0c0814'); g.addColorStop(1,'#100810');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      // 随机闪烁色块
+      if (Math.random() < 0.15) {
+        const bx = Math.random() * w, by = Math.random() * h;
+        ctx.fillStyle = `rgba(${Math.random()>0.5?'255,107,156':'124,140,255'},0.12)`;
+        ctx.fillRect(bx, by, 20+Math.random()*60, 3+Math.random()*8);
+      }
+      drawGrid(ctx,w,h,36,'rgba(124,140,255,0.06)');
+      // RGB偏移线
+      ctx.strokeStyle = 'rgba(255,0,0,0.04)'; ctx.lineWidth = 1;
+      const ly = (t * 2) % h;
+      ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(w,ly); ctx.stroke();
+    }
+  ];
+  (themes[theme] || themes[0])();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // 首次交互时初始化音频
+  document.addEventListener('click', () => SFX.init(), { once: true });
+  document.addEventListener('touchstart', () => SFX.init(), { once: true });
   initAmbientBackground();
   initForms();
   initHomePage();
@@ -213,66 +485,155 @@ function initGamePage() {
   const scoreNode = document.getElementById('score');
   const boardNode = document.getElementById('leaderboard');
   const statusNode = ensureStatusNode();
+  const configs = LEVEL_CONFIGS[type] || [];
+
+  // 关卡状态
   let controller = null;
   let running = false;
   let score = 0;
+  let level = 0;
+  let totalScore = 0;
+  let lives = 3;
+
+  // 关卡信息栏（注入到 game-controls 旁边）
+  const levelBar = el('div', 'level-bar');
+  levelBar.innerHTML = `
+    <span class="level-tag">第 <strong class="level-num">1</strong> 关</span>
+    <span class="level-lives">♥♥♥</span>
+    <button class="sfx-toggle" title="静音/开启音效">🔊</button>
+  `;
+  const controlsEl = document.querySelector('.game-controls');
+  if (controlsEl) controlsEl.appendChild(levelBar);
+  const levelNumEl = levelBar.querySelector('.level-num');
+  const livesEl = levelBar.querySelector('.level-lives');
+  const sfxBtn = levelBar.querySelector('.sfx-toggle');
+  sfxBtn?.addEventListener('click', () => {
+    const muted = SFX.toggle();
+    sfxBtn.textContent = muted ? '🔇' : '🔊';
+  });
+
+  function updateLevelUI() {
+    if (levelNumEl) levelNumEl.textContent = level + 1;
+    if (livesEl) livesEl.textContent = '♥'.repeat(Math.max(0, lives)) + '♡'.repeat(Math.max(0, 3 - lives));
+  }
 
   const api = {
     setScore(value) {
       score = Math.max(0, Math.round(value));
       if (scoreNode) scoreNode.textContent = String(score);
     },
-    addScore(delta) {
-      api.setScore(score + delta);
-    },
-    getScore() {
-      return score;
-    },
-    setStatus(text) {
-      statusNode.textContent = text;
-    },
-    finish(finalScore, text) {
+    addScore(delta) { api.setScore(score + delta); },
+    getScore() { return score; },
+    setStatus(text) { statusNode.textContent = text; },
+    get level() { return level; },
+    get totalScore() { return totalScore; },
+    get lives() { return lives; },
+    getLevelConfig() { return configs[Math.min(level, configs.length - 1)] || configs[0] || {}; },
+
+    // 通关
+    levelComplete(bonusScore) {
       if (!running) return;
-      if (typeof finalScore === 'number') api.setScore(finalScore);
       running = false;
       controller?.stop?.();
       controller = null;
-      saveBest(score);
+      const lvlScore = score + (bonusScore || 0);
+      api.setScore(lvlScore);
+      totalScore += lvlScore;
+      SFX.play('levelUp');
       updateButton();
-      if (score > 0) {
-        showCelebration(gameArea, score, (name) => {
+
+      if (level < configs.length - 1) {
+        // 还有下一关
+        showLevelComplete(gameArea, level, lvlScore, totalScore, () => {
+          level++;
+          updateLevelUI();
+          startLevel();
+        });
+      } else {
+        // 全部通关！
+        saveBest(totalScore);
+        saveProgress({ highestLevel: level, bestTotal: Math.max(totalScore, getProgress().bestTotal || 0) });
+        showCelebration(gameArea, totalScore, (name) => {
           if (name) {
             const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-            list.push({ name, score: Math.round(score), time: Date.now() });
+            list.push({ name, score: Math.round(totalScore), time: Date.now() });
             list.sort((a, b) => b.score - a.score || a.time - b.time);
             localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
-            statusNode.textContent = `${escapeHtml(name)} 的分数已保存！`;
+            statusNode.textContent = `🎉 全部通关！${escapeHtml(name)} 总分 ${totalScore}`;
           } else {
-            statusNode.textContent = text || '本局已结束。';
+            statusNode.textContent = `全部通关！总分 ${totalScore}`;
           }
           renderLeaderboard(boardNode);
         });
-      } else {
-        renderLeaderboard(boardNode);
-        statusNode.textContent = text || '本局未产生分数。';
       }
+    },
+
+    // 失败
+    levelFailed(text) {
+      if (!running) return;
+      running = false;
+      controller?.stop?.();
+      controller = null;
+      lives--;
+      updateLevelUI();
+      updateButton();
+
+      showLevelFailed(gameArea, level, lives,
+        // 重试
+        () => { if (lives > 0) startLevel(); },
+        // 退出 — 保存已有总分
+        () => {
+          if (totalScore > 0) {
+            saveBest(totalScore);
+            showCelebration(gameArea, totalScore, (name) => {
+              if (name) {
+                const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
+                list.push({ name, score: Math.round(totalScore), time: Date.now() });
+                list.sort((a, b) => b.score - a.score || a.time - b.time);
+                localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
+              }
+              renderLeaderboard(boardNode);
+              statusNode.textContent = text || '闯关结束。';
+            });
+          } else {
+            renderLeaderboard(boardNode);
+            statusNode.textContent = text || '闯关结束。';
+          }
+        }
+      );
+    },
+
+    // 老的直接结束（兼容）
+    finish(finalScore, text) {
+      if (!running) return;
+      if (typeof finalScore === 'number') api.setScore(finalScore);
+      // 当做通关处理
+      api.levelComplete(0);
     }
   };
 
   function updateButton() {
-    startBtn.textContent = running ? '结束本局' : '开始挑战';
+    startBtn.textContent = running ? '结束本局' : (level > 0 ? `继续 第${level+1}关` : '开始闯关');
     startBtn.classList.toggle('pulse', running);
   }
 
-  function start() {
-    if (running) return;
+  function startLevel() {
     gameArea.innerHTML = '';
     api.setScore(0);
+    updateLevelUI();
     controller = createControllerFor(type, gameArea, api);
     controller.start?.();
     running = true;
     updateButton();
-    statusNode.textContent = '游戏运行中。结束本局后会询问是否保存分数。';
+    statusNode.textContent = `第 ${level+1} 关 进行中`;
+  }
+
+  function startFresh() {
+    level = 0;
+    totalScore = 0;
+    lives = 3;
+    updateLevelUI();
+    startLevel();
   }
 
   function stop(save = true) {
@@ -281,13 +642,12 @@ function initGamePage() {
     controller?.stop?.();
     controller = null;
     updateButton();
-    saveBest(score);
-    if (save && score > 0) {
-      // 弹出庆祝动画 + 名字输入面板
-      showCelebration(gameArea, score, (name) => {
+    saveBest(totalScore + score);
+    if (save && (totalScore + score) > 0) {
+      showCelebration(gameArea, totalScore + score, (name) => {
         if (name) {
           const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
-          list.push({ name, score: Math.round(score), time: Date.now() });
+          list.push({ name, score: Math.round(totalScore + score), time: Date.now() });
           list.sort((a, b) => b.score - a.score || a.time - b.time);
           localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 10)));
           statusNode.textContent = `${escapeHtml(name)} 的分数已保存！`;
@@ -302,7 +662,7 @@ function initGamePage() {
     }
   }
 
-  startBtn?.addEventListener('click', () => running ? stop(true) : start());
+  startBtn?.addEventListener('click', () => running ? stop(true) : startFresh());
   renderLeaderboard(boardNode);
   statusNode.textContent = '点击开始挑战。';
   updateButton();
@@ -1001,31 +1361,39 @@ function jumpGame(container, api) {
     return { x, y, width, height: 18 };
   }
 
+  let cfg = {};
+  let targetPlatforms = 8;
+  let tick_t = 0;
+
   function addPlatform() {
     const last = platforms[platforms.length - 1];
-    const gap = 140 + Math.random() * 110;
+    const gap = cfg.gapMin + Math.random() * (cfg.gapMax - cfg.gapMin);
     const nextY = clamp(last.y + (Math.random() * 120 - 60), 110, h - 90);
-    platforms.push(platform(last.x + gap, nextY, 92 + Math.random() * 52));
+    const pw = cfg.wMin + Math.random() * (cfg.wMax - cfg.wMin);
+    const p = platform(last.x + gap, nextY, pw);
+    if (cfg.moving && Math.random() < 0.3) p.moving = 0.3 + Math.random() * 0.5;
+    if (cfg.crumble && Math.random() < 0.25) p.crumble = true;
+    platforms.push(p);
   }
 
   function reset() {
     resize();
+    cfg = api.getLevelConfig();
+    targetPlatforms = cfg.target || 8;
     platforms = [platform(50, h - 88, 120), platform(250, h - 148, 118), platform(470, h - 210, 130)];
     while (platforms.length < 10) addPlatform();
-    landed = 0;
+    landed = 0; tick_t = 0;
     player.x = platforms[0].x + platforms[0].width / 2;
     player.y = platforms[0].y - player.r;
-    player.vx = 0;
-    player.vy = 0;
-    player.air = false;
+    player.vx = 0; player.vy = 0; player.air = false;
     chargeValue = 0;
     bar.style.width = '0%';
     api.setScore(0);
-    api.setStatus('按住蓄力，松开起跳。');
+    api.setStatus(`第${api.level+1}关 — 跳过 ${targetPlatforms || '∞'} 个平台`);
   }
 
   function draw() {
-    paintCanvas(ctx, w, h, '#1b2638', '#0e1623');
+    paintThemedBg(ctx, w, h, cfg.bg || 0, tick_t);
     platforms.forEach((p, index) => {
       ctx.fillStyle = index === landed ? 'rgba(255,138,91,0.85)' : 'rgba(104,213,255,0.72)';
       roundRect(ctx, p.x, p.y, p.width, p.height, 10, true);
@@ -1049,6 +1417,7 @@ function jumpGame(container, api) {
   }
 
   function tick() {
+    tick_t++;
     if (press && !player.air) {
       chargeValue = Math.min(1, chargeValue + 0.018);
       bar.style.width = `${Math.round(chargeValue * 100)}%`;
@@ -1057,34 +1426,47 @@ function jumpGame(container, api) {
       player.vy += 0.44;
       player.x += player.vx;
       player.y += player.vy;
+      if (cfg.wind) player.vx += Math.sin(tick_t * 0.02) * 0.08;
     }
     if (player.x > w * 0.46) {
       const shift = player.x - w * 0.46;
       player.x -= shift;
       platforms.forEach(p => p.x -= shift);
     }
+    // 移动平台
+    platforms.forEach(p => {
+      if (p.moving) p.y += Math.sin(tick_t * p.moving) * 0.6;
+    });
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       const hitTop = player.vy >= 0 && player.y + player.r >= p.y && player.y + player.r <= p.y + p.height + 12;
       const insideX = player.x >= p.x && player.x <= p.x + p.width;
       if (player.air && hitTop && insideX) {
-        player.air = false;
-        player.vx = 0;
-        player.vy = 0;
+        player.air = false; player.vx = 0; player.vy = 0;
         player.y = p.y - player.r;
+        SFX.play('land');
         if (i > landed) {
           landed = i;
-          api.addScore(10);
+          // 完美着陆判定（中心30%区域）
+          const center = p.x + p.width / 2;
+          const dist = Math.abs(player.x - center) / (p.width / 2);
+          const perfect = dist < 0.3;
+          api.addScore(perfect ? 20 : 10);
+          if (perfect) SFX.play('combo');
+          // 碎裂平台
+          if (p.crumble) setTimeout(() => { p.y = 9999; }, 500);
+          // 检查通关
+          if (targetPlatforms > 0 && landed >= targetPlatforms) {
+            return api.levelComplete(landed * 2);
+          }
         }
       }
     }
     while (platforms.length && platforms[0].x + platforms[0].width < -100) {
-      platforms.shift();
-      landed = Math.max(0, landed - 1);
-      addPlatform();
+      platforms.shift(); landed = Math.max(0, landed - 1); addPlatform();
     }
     draw();
-    if (player.y > h + 80) return api.finish(api.getScore(), '掉下平台了，本局结束。');
+    if (player.y > h + 80) { SFX.play('gameOver'); return api.levelFailed('掉下平台了'); }
     raf = requestAnimationFrame(tick);
   }
 
@@ -1100,6 +1482,7 @@ function jumpGame(container, api) {
     player.air = true;
     player.vx = 3.6 + chargeValue * 8.2;
     player.vy = -(6.8 + chargeValue * 10.2);
+    SFX.play('jump');
     chargeValue = 0;
     bar.style.width = '0%';
   }
@@ -1139,30 +1522,25 @@ function jumpGame(container, api) {
 
 function connectGame(container, api) {
   const wrap = createGameShell('Connect', '拖动圆点，让所有连线都不再相交。');
-  const info = el('div', 'cw-subinfo', '把交叉边数量降到 0。');
+  const info = el('div', 'cw-subinfo', '');
   const canvas = document.createElement('canvas');
   canvas.className = 'cw-canvas';
   wrap.append(info, canvas);
   container.appendChild(wrap);
   const ctx = canvas.getContext('2d');
-  const edges = [[0, 2], [0, 4], [1, 3], [1, 5], [2, 5], [2, 4], [3, 4], [0, 3]];
-  let raf = 0;
-  let w = 0;
-  let h = 0;
-  let dragIndex = -1;
-  let nodes = [];
+  let edges = [];
+  let raf = 0, w = 0, h = 0, dragIndex = -1, nodes = [];
+  let cfg = {}, timeLeft = 90, tick_t = 0, timerInterval = null, lastCrossCount = -1;
 
   function resize() {
     w = Math.max(320, container.clientWidth - 24);
     h = Math.max(380, Math.floor(innerHeight * 0.55));
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = w; canvas.height = h;
   }
 
   function orient(p1, p2, p3) {
     return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
   }
-
   function hits(a, b, c, d) {
     if (a === c || a === d || b === c || b === d) return false;
     return orient(a, b, c) * orient(a, b, d) < 0 && orient(c, d, a) * orient(c, d, b) < 0;
@@ -1170,57 +1548,74 @@ function connectGame(container, api) {
 
   function reset() {
     resize();
-    const cx = w / 2;
-    const cy = h / 2;
-    const radius = Math.min(w, h) * 0.29;
-    nodes = Array.from({ length: 6 }, (_, i) => {
-      const angle = Math.PI * 2 * i / 6 + Math.random() * 0.8;
-      return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, r: 18, mascot: WORLD.mascots[i % WORLD.mascots.length] };
+    cfg = api.getLevelConfig();
+    const n = cfg.nodes || 6;
+    const edgeCount = cfg.edges || 8;
+    timeLeft = cfg.time || 90;
+    lastCrossCount = -1;
+    const cx = w / 2, cy = h / 2, radius = Math.min(w, h) * 0.29;
+    // 生成节点（随机打乱位置）
+    nodes = Array.from({ length: n }, (_, i) => {
+      const angle = Math.PI * 2 * i / n + Math.random() * 0.8;
+      return { x: cx + Math.cos(angle) * radius * (0.7 + Math.random() * 0.4), y: cy + Math.sin(angle) * radius * (0.7 + Math.random() * 0.4), r: 18, mascot: WORLD.mascots[i % WORLD.mascots.length] };
     });
+    // 生成边（先生成生成树保证连通，再加随机边）
+    edges = [];
+    const perm = shuffle(Array.from({ length: n }, (_, i) => i));
+    for (let i = 1; i < n; i++) edges.push([perm[i - 1], perm[i]]);
+    while (edges.length < edgeCount) {
+      const a = Math.floor(Math.random() * n), b = Math.floor(Math.random() * n);
+      if (a !== b && !edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) edges.push([a, b]);
+    }
     api.setScore(300);
+    // 计时器
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft <= 5 && timeLeft > 0) SFX.play('tick');
+      if (timeLeft <= 0) { clearInterval(timerInterval); api.levelFailed('时间到了'); }
+    }, 1000);
+    api.setStatus(`第${api.level+1}关 — ${n}个节点 ${edgeCount}条边 ${timeLeft}秒`);
   }
 
   function crossingEdges() {
     const found = new Set();
-    for (let i = 0; i < edges.length; i++) {
+    for (let i = 0; i < edges.length; i++)
       for (let j = i + 1; j < edges.length; j++) {
-        const [a1, a2] = edges[i];
-        const [b1, b2] = edges[j];
-        if (hits(nodes[a1], nodes[a2], nodes[b1], nodes[b2])) {
-          found.add(i);
-          found.add(j);
-        }
+        const [a1, a2] = edges[i], [b1, b2] = edges[j];
+        if (hits(nodes[a1], nodes[a2], nodes[b1], nodes[b2])) { found.add(i); found.add(j); }
       }
-    }
     return found;
   }
 
   function draw() {
-    paintCanvas(ctx, w, h, '#172433', '#111827');
+    tick_t++;
+    paintThemedBg(ctx, w, h, cfg.bg || 0, tick_t);
     const found = crossingEdges();
     const count = found.size;
+    if (count !== lastCrossCount) {
+      if (lastCrossCount > 0 && count < lastCrossCount) SFX.play('correct');
+      lastCrossCount = count;
+    }
     api.setScore(Math.max(0, 300 - count * 24));
-    info.textContent = count === 0 ? '交叉数 0，已解开。' : `当前交叉边数量：${count}`;
+    info.textContent = count === 0 ? '✓ 已解开！' : `交叉边 ${count} · 剩余 ${Math.max(0, timeLeft)}s`;
     edges.forEach(([from, to], index) => {
       ctx.lineWidth = 4;
       ctx.strokeStyle = found.has(index) ? 'rgba(255,107,156,0.9)' : 'rgba(104,213,255,0.85)';
-      ctx.beginPath();
-      ctx.moveTo(nodes[from].x, nodes[from].y);
-      ctx.lineTo(nodes[to].x, nodes[to].y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(nodes[from].x, nodes[from].y); ctx.lineTo(nodes[to].x, nodes[to].y); ctx.stroke();
     });
     nodes.forEach(node => {
+      const pulse = 1 + Math.sin(tick_t * 0.04) * 0.06;
       ctx.fillStyle = node.mascot.color;
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#0e1520';
-      ctx.font = '700 14px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.beginPath(); ctx.arc(node.x, node.y, node.r * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0e1520'; ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(node.mascot.face, node.x, node.y + 1);
     });
-    if (count === 0) return api.finish(api.getScore() + 120, '线网已经全部解开。');
+    if (count === 0) {
+      clearInterval(timerInterval);
+      SFX.play('levelUp');
+      return api.levelComplete(Math.max(0, timeLeft) * 5);
+    }
     raf = requestAnimationFrame(draw);
   }
 
@@ -1273,16 +1668,14 @@ function connectGame(container, api) {
 }
 
 function match3Game(container, api) {
-  const wrap = createGameShell('Match 3', '先选一个图块，再点相邻图块交换。只有能消除的交换才会生效。');
+  const wrap = createGameShell('Match 3', '交换图块，做出连续消除。达到目标分数过关！');
+  const statusLine = el('div', 'cw-subinfo', '');
   const boardNode = el('div', 'm3-board');
-  wrap.appendChild(boardNode);
+  wrap.append(statusLine, boardNode);
   container.appendChild(wrap);
-  const size = 7;
-  const types = WORLD.mascots.map(item => item.id);
-  let board = [];
-  let selected = null;
-  let busy = false;
-  let timers = [];
+  let cfg = {}, size = 7, movesLeft = 30, targetScore = 300;
+  let types = [];
+  let board = [], selected = null, busy = false, timers = [], chainDepth = 0;
 
   function mascotFor(id) {
     return WORLD.mascots.find(item => item.id === id);
@@ -1345,71 +1738,68 @@ function match3Game(container, api) {
     [board[a.row][a.col], board[b.row][b.col]] = [board[b.row][b.col], board[a.row][a.col]];
   }
 
+  function updateStatus() {
+    statusLine.textContent = `步数 ${movesLeft} · 目标 ${targetScore} · 当前 ${api.getScore()}`;
+    // 背景主题
+    const area = container.closest('.game-area');
+    if (area) { area.className = `game-area bg-theme-${cfg.bg || 0}`; }
+  }
+
   function cascade() {
     const set = matches();
     if (!set.size) {
       busy = false;
-      api.setStatus('可以继续交换图块。');
+      chainDepth = 0;
+      updateStatus();
+      // 检查是否达到目标
+      if (api.getScore() >= targetScore) return api.levelComplete(movesLeft * 5);
+      if (movesLeft <= 0) return api.levelFailed('步数用完了');
       return render();
     }
+    chainDepth++;
     set.forEach(key => {
       const [row, col] = key.split('-').map(Number);
       board[row][col] = null;
     });
-    api.addScore(set.size * 10);
+    const pts = set.size * 10 * chainDepth;
+    api.addScore(pts);
+    SFX.play(chainDepth > 1 ? 'combo' : 'match');
     render();
-    timers.push(setTimeout(() => {
-      collapse();
-      render();
-      cascade();
-    }, 170));
+    timers.push(setTimeout(() => { collapse(); render(); cascade(); }, 170));
   }
 
   function clickCell(row, col) {
     if (busy) return;
-    if (!selected) {
-      selected = { row, col };
-      return render();
-    }
+    if (!selected) { selected = { row, col }; SFX.play('flip'); return render(); }
     const next = { row, col };
-    if (selected.row === row && selected.col === col) {
-      selected = null;
-      return render();
-    }
-    if (Math.abs(selected.row - row) + Math.abs(selected.col - col) !== 1) {
-      selected = next;
-      return render();
-    }
+    if (selected.row === row && selected.col === col) { selected = null; return render(); }
+    if (Math.abs(selected.row - row) + Math.abs(selected.col - col) !== 1) { selected = next; return render(); }
     swap(selected, next);
-    if (!matches().size) {
-      swap(selected, next);
-      selected = null;
-      api.setStatus('这次交换没有形成消除。');
-      return render();
-    }
-    selected = null;
-    busy = true;
-    api.setStatus('连锁消除中。');
+    if (!matches().size) { swap(selected, next); selected = null; SFX.play('wrong'); return render(); }
+    selected = null; busy = true; movesLeft--; chainDepth = 0;
+    updateStatus();
     cascade();
   }
 
   return {
     start() {
+      cfg = api.getLevelConfig();
+      size = cfg.size || 7;
+      movesLeft = cfg.moves || 25;
+      targetScore = cfg.target || 300;
+      types = WORLD.mascots.slice(0, cfg.types || 5).map(m => m.id);
+      boardNode.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
       board = Array.from({ length: size }, () => Array.from({ length: size }, () => randomType()));
       while (matches().size) matches().forEach(key => {
         const [row, col] = key.split('-').map(Number);
         board[row][col] = randomType();
       });
-      selected = null;
-      busy = false;
+      selected = null; busy = false; chainDepth = 0;
       api.setScore(0);
-      api.setStatus('交换图块，做出连续消除。');
+      updateStatus();
       render();
     },
-    stop() {
-      timers.forEach(clearTimeout);
-      timers = [];
-    }
+    stop() { timers.forEach(clearTimeout); timers = []; }
   };
 }
 
@@ -1456,58 +1846,74 @@ function memoryGame(container, api) {
     }, 1000);
   }
 
+  let cfg = {}, mistakes = 0, maxWrong = 7, totalPairs = 8;
+
   function flip(index) {
     if (locked || matched.has(index) || open.includes(index)) return;
+    SFX.play('flip');
     open.push(index);
     render();
     if (open.length < 2) return;
     locked = true;
     const [a, b] = open;
     if (deck[a].pair === deck[b].pair) {
-      matched.add(a);
-      matched.add(b);
-      open = [];
-      locked = false;
+      matched.add(a); matched.add(b);
+      open = []; locked = false;
       api.addScore(25);
-      info.textContent = `已配对 ${matched.size / 2}/8`;
+      SFX.play('correct');
+      info.textContent = `已配对 ${matched.size / 2}/${totalPairs}`;
       render();
-      if (matched.size === deck.length) api.finish(api.getScore() + 80, '记忆挑战完成。');
+      if (matched.size === deck.length) api.levelComplete(Math.max(0, (maxWrong - mistakes) * 10));
       return;
     }
-    setTimeout(() => {
-      open = [];
-      locked = false;
-      render();
-    }, 700);
+    mistakes++;
+    SFX.play('wrong');
+    info.textContent = `错误 ${mistakes}/${maxWrong}`;
+    if (mistakes >= maxWrong) {
+      setTimeout(() => api.levelFailed('错误次数太多'), 500);
+      return;
+    }
+    setTimeout(() => { open = []; locked = false; render(); }, 700);
   }
 
   return {
     start() {
-      deck = shuffle(Array.from({ length: 8 }, (_, index) => {
+      cfg = api.getLevelConfig();
+      totalPairs = cfg.pairs || 8;
+      maxWrong = cfg.maxWrong || 7;
+      mistakes = 0;
+      const previewTime = cfg.preview || 8;
+      // 根据配对数生成卡牌
+      deck = shuffle(Array.from({ length: totalPairs }, (_, index) => {
         const mascot = WORLD.mascots[index % WORLD.mascots.length];
         return [{ pair: `${mascot.id}-${index}`, mascot }, { pair: `${mascot.id}-${index}`, mascot }];
       }).flat());
-      open = deck.map((_, index) => index);
+      // 调整网格列数
+      const cols = totalPairs <= 6 ? 4 : totalPairs <= 10 ? 5 : 6;
+      grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      // 背景主题
+      const area = container.closest('.game-area');
+      if (area) area.className = `game-area bg-theme-${cfg.bg || 0}`;
+      open = deck.map((_, i) => i);
       matched = new Set();
       locked = true;
-      left = 8;
+      left = previewTime;
       api.setScore(0);
+      api.setStatus(`第${api.level+1}关 — ${totalPairs}对 预览${previewTime}秒 最多错${maxWrong}次`);
       render();
       preview();
     },
-    stop() {
-      clearInterval(timer);
-    }
+    stop() { clearInterval(timer); }
   };
 }
 
 function mergeGame(container, api) {
-  const wrap = createGameShell('Merge', '点击空位放置棋子。相邻且相同的棋子会自动合并升级。');
+  const wrap = createGameShell('Merge', '点击空位放置棋子。达到目标分数过关！');
   const nextBox = el('div', 'cw-subinfo', '');
   const grid = el('div', 'merge-grid');
   wrap.append(nextBox, grid);
   container.appendChild(wrap);
-  const size = 5;
+  let size = 5, cfg = {}, movesLeft = 25, targetScore = 500;
   let board = [];
   let nextPiece = null;
 
@@ -1572,6 +1978,7 @@ function mergeGame(container, api) {
             found.slice(1).forEach(([r, c]) => board[r][c] = null);
             board[row][col] = { mascot: cell.mascot, level: Math.min(6, cell.level + 1) };
             api.addScore(cell.level * found.length * 15);
+            SFX.play('merge');
             changed = true;
           }
         }
@@ -1591,21 +1998,41 @@ function mergeGame(container, api) {
     return false;
   }
 
+  function updateInfo() {
+    nextBox.innerHTML = `下一枚：<span class="merge-next" style="--mc:${nextPiece.mascot.color};--ma:${nextPiece.mascot.accent}">${nextPiece.mascot.face} Lv.${nextPiece.level}</span> · 步数 ${movesLeft} · 目标 ${targetScore}`;
+  }
+
   function place(row, col) {
     if (board[row][col]) return;
+    SFX.play('place');
     board[row][col] = nextPiece;
     settle();
-    nextPiece = { level: Math.random() < 0.75 ? 1 : 2, mascot: choice(WORLD.mascots) };
+    movesLeft--;
+    const maxSpawn = cfg.maxSpawn || 1;
+    nextPiece = { level: Math.random() < 0.7 ? 1 : Math.min(maxSpawn, 2), mascot: choice(WORLD.mascots) };
+    updateInfo();
     render();
-    if (board.flat().every(Boolean) && !possible()) api.finish(api.getScore(), '棋盘已满，没有可继续合成的位置。');
+    if (api.getScore() >= targetScore) return api.levelComplete(movesLeft * 5);
+    if (movesLeft <= 0 || (board.flat().every(Boolean) && !possible())) {
+      SFX.play('gameOver');
+      return api.levelFailed('无法继续了');
+    }
   }
 
   return {
     start() {
+      cfg = api.getLevelConfig();
+      size = cfg.size || 5;
+      movesLeft = cfg.moves || 25;
+      targetScore = cfg.target || 500;
+      grid.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
+      const area = container.closest('.game-area');
+      if (area) area.className = `game-area bg-theme-${cfg.bg || 0}`;
       board = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
       nextPiece = { level: 1, mascot: choice(WORLD.mascots) };
       api.setScore(0);
-      api.setStatus('点击空位放置下一枚碎片。');
+      api.setStatus(`第${api.level+1}关 — ${size}×${size}棋盘 目标${targetScore}分`);
+      updateInfo();
       render();
     },
     stop() {}
@@ -1613,34 +2040,35 @@ function mergeGame(container, api) {
 }
 
 function runnerGame(container, api) {
-  const wrap = createGameShell('Runner', '点击画布、触摸屏幕或按空格起跳。撞到障碍物就结束。');
+  const wrap = createGameShell('Runner', '跳跃和滑行躲避障碍。收集角色徽章加分！');
   const canvas = document.createElement('canvas');
   canvas.className = 'cw-canvas';
   wrap.appendChild(canvas);
   container.appendChild(wrap);
   const ctx = canvas.getContext('2d');
   const player = { x: 84, y: 0, w: 34, h: 42, vy: 0, ground: 0 };
-  let raf = 0;
-  let w = 0;
-  let h = 0;
-  let tick = 0;
-  let speed = 5.4;
-  let obstacles = [];
-  let coins = [];
-  let mascot = WORLD.mascots[0];
+  let raf = 0, w = 0, h = 0, tick = 0, speed = 5.4;
+  let obstacles = [], coins = [], mascot = WORLD.mascots[0];
+  let cfg = {}, distance = 0, targetDist = 800, hasDoubleJump = false;
 
   function resize() {
     w = Math.max(320, container.clientWidth - 24);
     h = Math.max(380, Math.floor(innerHeight * 0.55));
-    canvas.width = w;
-    canvas.height = h;
-    player.ground = h - 72;
-    player.y = player.ground;
+    canvas.width = w; canvas.height = h;
+    player.ground = h - 72; player.y = player.ground;
   }
 
   function jump(event) {
     event?.preventDefault?.();
-    if (player.y >= player.ground) player.vy = -12.4;
+    if (player.y >= player.ground) {
+      player.vy = -12.4;
+      hasDoubleJump = cfg.doubleJump || false;
+      SFX.play('jump');
+    } else if (hasDoubleJump) {
+      player.vy = -10.5;
+      hasDoubleJump = false;
+      SFX.play('jump');
+    }
   }
 
   function keydown(event) {
@@ -1655,15 +2083,14 @@ function runnerGame(container, api) {
 
   function update() {
     tick += 1;
-    if (tick % 88 === 0) obstacles.push({ x: w + 40, w: Math.random() > 0.55 ? 26 : 36, h: Math.random() > 0.55 ? 64 : 36 });
-    if (tick % 124 === 0) coins.push({ x: w + 40, y: player.ground - 70 - Math.random() * 90, r: 15, mascot: choice(WORLD.mascots) });
-    if (tick % 220 === 0) speed += 0.25;
+    distance += speed * 0.1;
+    const freq = cfg.obstFreq || 88;
+    if (tick % freq === 0) obstacles.push({ x: w + 40, w: Math.random() > 0.5 ? 26 : 36, h: Math.random() > 0.5 ? 64 : 36 });
+    if (tick % (freq + 30) === 0) coins.push({ x: w + 40, y: player.ground - 70 - Math.random() * 90, r: 15, mascot: choice(WORLD.mascots) });
+    if (tick % 220 === 0) speed += (cfg.accel || 0.2);
     player.vy += 0.72;
     player.y += player.vy;
-    if (player.y > player.ground) {
-      player.y = player.ground;
-      player.vy = 0;
-    }
+    if (player.y > player.ground) { player.y = player.ground; player.vy = 0; }
     obstacles.forEach(item => item.x -= speed);
     coins.forEach(item => item.x -= speed * 0.92);
     obstacles = obstacles.filter(item => item.x + item.w > -40);
@@ -1671,50 +2098,56 @@ function runnerGame(container, api) {
     const rect = { x: player.x, y: player.y - player.h, w: player.w, h: player.h };
     for (const item of obstacles) {
       if (rectOverlap(rect, { x: item.x, y: player.ground - item.h, w: item.w, h: item.h })) {
-        api.finish(api.getScore(), '撞上障碍物了。');
+        SFX.play('gameOver');
+        api.levelFailed('撞上障碍物了');
         return false;
       }
     }
     coins = coins.filter(item => {
-      if (hit(item, rect)) {
-        mascot = item.mascot;
-        api.addScore(20);
-        return false;
-      }
+      if (hit(item, rect)) { mascot = item.mascot; api.addScore(20); SFX.play('coin'); return false; }
       return true;
     });
     if (tick % 12 === 0) api.addScore(1);
+    // 通关检测
+    if (targetDist > 0 && distance >= targetDist) { api.levelComplete(Math.round(distance / 10)); return false; }
     return true;
   }
 
   function draw() {
-    paintCanvas(ctx, w, h, '#1d2737', '#0d1520');
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(0, player.ground + 8, w, 4);
-    ctx.fillStyle = 'rgba(255,138,91,0.18)';
-    ctx.fillRect(0, player.ground + 12, w, 12);
+    paintThemedBg(ctx, w, h, cfg.bg || 0, tick);
+    // 跑道
+    ctx.fillStyle = 'rgba(104,213,255,0.12)';
+    ctx.fillRect(0, player.ground + 8, w, 3);
+    ctx.fillStyle = 'rgba(255,138,91,0.1)';
+    ctx.fillRect(0, player.ground + 12, w, 10);
+    // 距离进度条
+    if (targetDist > 0) {
+      const pct = Math.min(1, distance / targetDist);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      roundRect(ctx, 10, 10, w - 20, 8, 4, true);
+      ctx.fillStyle = 'rgba(104,213,255,0.6)';
+      roundRect(ctx, 10, 10, (w - 20) * pct, 8, 4, true);
+    }
     obstacles.forEach(item => {
       ctx.fillStyle = '#ff6b9c';
       roundRect(ctx, item.x, player.ground - item.h, item.w, item.h, 8, true);
     });
     coins.forEach(item => {
       ctx.fillStyle = item.mascot.color;
-      ctx.beginPath();
-      ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#0e1520';
-      ctx.font = '700 13px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.beginPath(); ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0e1520'; ctx.font = '700 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(item.mascot.face, item.x, item.y + 1);
     });
+    // 玩家
     ctx.fillStyle = mascot.color;
     roundRect(ctx, player.x, player.y - player.h, player.w, player.h, 12, true);
-    ctx.fillStyle = '#0e1520';
-    ctx.font = '700 16px "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#0e1520'; ctx.font = '700 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(mascot.face, player.x + player.w / 2, player.y - player.h / 2 + 1);
+    // 二段跳提示
+    if (hasDoubleJump && player.y < player.ground) {
+      ctx.fillStyle = 'rgba(104,213,255,0.4)'; ctx.font = '10px sans-serif';
+      ctx.fillText('↑ 二段跳', player.x + player.w / 2, player.y - player.h - 8);
+    }
   }
 
   function loop() {
@@ -1726,14 +2159,16 @@ function runnerGame(container, api) {
   return {
     start() {
       resize();
+      cfg = api.getLevelConfig();
       tick = 0;
-      speed = 5.4;
-      obstacles = [];
-      coins = [];
+      speed = cfg.speed || 5.4;
+      distance = 0;
+      targetDist = cfg.dist || 800;
+      obstacles = []; coins = [];
       mascot = WORLD.mascots[0];
-      player.vy = 0;
+      player.vy = 0; hasDoubleJump = false;
       api.setScore(0);
-      api.setStatus('起跳躲避障碍，顺手收集角色徽章。');
+      api.setStatus(`第${api.level+1}关 — ${targetDist > 0 ? `跑${targetDist}米` : '无限模式'}${cfg.doubleJump ? ' · 可二段跳' : ''}`);
       loop();
       canvas.addEventListener('mousedown', jump);
       canvas.addEventListener('touchstart', jump, { passive: false });
