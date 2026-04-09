@@ -142,6 +142,8 @@ const LEVEL_CONFIGS = {
     { gapMin: 200, gapMax: 300, wMin: 90,  wMax: 130, target: 16, bg: 2, moving: true },
     { gapMin: 220, gapMax: 330, wMin: 80,  wMax: 120, target: 20, bg: 3, moving: true, crumble: true },
     { gapMin: 240, gapMax: 360, wMin: 70,  wMax: 110, target: 0,  bg: 4, moving: true, crumble: true, wind: true },
+    // ☠ 地狱关：极窄平台+全部会动会碎+强风+跳30个才算赢，1条命
+    { gapMin: 280, gapMax: 420, wMin: 45, wMax: 75, target: 30, bg: 4, moving: true, crumble: true, wind: true, hell: true },
   ],
   connect: [
     { nodes: 5,  edges: 6,  time: 90,  bg: 0 },
@@ -149,6 +151,8 @@ const LEVEL_CONFIGS = {
     { nodes: 7,  edges: 11, time: 60,  bg: 2 },
     { nodes: 8,  edges: 14, time: 50,  bg: 3 },
     { nodes: 9,  edges: 18, time: 40,  bg: 4 },
+    // ☠ 地狱关：12节点24条边，只有25秒
+    { nodes: 12, edges: 24, time: 25, bg: 4, hell: true },
   ],
   match3: [
     { size: 6, types: 4, target: 200,  moves: 30, bg: 0 },
@@ -156,6 +160,8 @@ const LEVEL_CONFIGS = {
     { size: 7, types: 5, target: 700,  moves: 22, bg: 2 },
     { size: 8, types: 5, target: 1100, moves: 18, bg: 3 },
     { size: 8, types: 5, target: 1600, moves: 15, bg: 4 },
+    // ☠ 地狱关：9×9棋盘5种色，3000分只给10步
+    { size: 9, types: 5, target: 3000, moves: 10, bg: 4, hell: true },
   ],
   memory: [
     { pairs: 6,  preview: 12, maxWrong: 8,  bg: 0 },
@@ -163,6 +169,8 @@ const LEVEL_CONFIGS = {
     { pairs: 10, preview: 8,  maxWrong: 6,  bg: 2 },
     { pairs: 12, preview: 6,  maxWrong: 5,  bg: 3 },
     { pairs: 15, preview: 4,  maxWrong: 4,  bg: 4 },
+    // ☠ 地狱关：20对卡片，只预览2秒，最多错2次
+    { pairs: 20, preview: 2, maxWrong: 2, bg: 4, hell: true },
   ],
   merge: [
     { size: 4, maxSpawn: 1, target: 200,  moves: 25, bg: 0 },
@@ -170,6 +178,8 @@ const LEVEL_CONFIGS = {
     { size: 5, maxSpawn: 2, target: 1000, moves: 25, bg: 2 },
     { size: 5, maxSpawn: 2, target: 1800, moves: 22, bg: 3 },
     { size: 6, maxSpawn: 3, target: 3000, moves: 30, bg: 4 },
+    // ☠ 地狱关：4×4小棋盘，5000分目标，只有15步，随机出到lv3
+    { size: 4, maxSpawn: 3, target: 5000, moves: 15, bg: 4, hell: true },
   ],
   runner: [
     { speed: 4.5, accel: 0.15, obstFreq: 110, dist: 800,  bg: 0 },
@@ -177,6 +187,8 @@ const LEVEL_CONFIGS = {
     { speed: 5.6, accel: 0.22, obstFreq: 80,  dist: 1800, bg: 2, doubleJump: true },
     { speed: 6.2, accel: 0.25, obstFreq: 70,  dist: 2500, bg: 3, doubleJump: true, slide: true },
     { speed: 7.0, accel: 0.28, obstFreq: 60,  dist: 0,    bg: 4, doubleJump: true, slide: true },
+    // ☠ 地狱关：起始速度9，障碍每35帧出一个，跑5000米，没有二段跳
+    { speed: 9.0, accel: 0.35, obstFreq: 35, dist: 5000, bg: 4, doubleJump: false, hell: true },
   ],
 };
 
@@ -189,15 +201,22 @@ function getProgress() {
 }
 function saveProgress(p) { localStorage.setItem(progressKey(), JSON.stringify(p)); }
 
-function showLevelComplete(container, lvl, lvlScore, totalScore, onNext) {
+function showLevelComplete(container, lvl, lvlScore, totalScore, onNext, isNextHell) {
   SFX.play('levelUp');
   const ov = el('div', 'level-overlay');
+  const hellWarning = isNextHell ? `
+    <div style="margin:10px 0;padding:10px 16px;border-radius:12px;background:rgba(255,60,60,.15);border:1px solid rgba(255,60,60,.3)">
+      <span style="font-size:1.3rem">☠</span>
+      <strong style="color:#ff4040"> 地狱挑战已解锁！</strong>
+      <div style="color:var(--muted);font-size:.82rem;margin-top:4px">只有1条命，难度暴增，反耳说：高手行？</div>
+    </div>` : '';
   ov.innerHTML = `
     <div class="level-box">
       <div class="level-star">★</div>
       <div class="level-msg">第 ${lvl + 1} 关 通过!</div>
       <div class="level-scores">本关 <strong>${lvlScore}</strong> · 累计 <strong>${totalScore}</strong></div>
-      <button class="level-next-btn">下一关 →</button>
+      ${hellWarning}
+      <button class="level-next-btn">${isNextHell ? '☠ 进入地狱挑战' : '下一关 →'}</button>
     </div>`;
   container.closest('.game-main')?.appendChild(ov) || document.body.appendChild(ov);
   const btn = ov.querySelector('.level-next-btn');
@@ -571,8 +590,16 @@ function initGamePage() {
   });
 
   function updateLevelUI() {
-    if (levelNumEl) levelNumEl.textContent = level + 1;
-    if (livesEl) livesEl.textContent = '♥'.repeat(Math.max(0, lives)) + '♡'.repeat(Math.max(0, 3 - lives));
+    const cfg = configs[Math.min(level, configs.length - 1)] || {};
+    const isHell = cfg.hell;
+    if (levelNumEl) levelNumEl.textContent = isHell ? '☠' : (level + 1);
+    if (livesEl) livesEl.textContent = '♥'.repeat(Math.max(0, lives)) + '♡'.repeat(Math.max(0, (isHell ? 1 : 3) - lives));
+    // 地狱关 — 关卡标签变红
+    const tag = levelBar.querySelector('.level-tag');
+    if (tag) {
+      tag.style.background = isHell ? 'rgba(255,60,60,.2)' : '';
+      tag.style.color = isHell ? '#ff4040' : '';
+    }
   }
 
   const api = {
@@ -601,12 +628,15 @@ function initGamePage() {
       updateButton();
 
       if (level < configs.length - 1) {
-        // 还有下一关
+        // 还有下一关 — 检查下一关是否是地狱
+        const nextCfg = configs[level + 1] || {};
         showLevelComplete(gameArea, level, lvlScore, totalScore, () => {
           level++;
+          // 地狱关：只有1条命
+          if (nextCfg.hell) lives = 1;
           updateLevelUI();
           startLevel();
-        });
+        }, nextCfg.hell);
       } else {
         // 全部通关！
         saveBest(totalScore);
@@ -683,7 +713,8 @@ function initGamePage() {
     controller.start?.();
     running = true;
     updateButton();
-    statusNode.textContent = `第 ${level+1} 关 进行中`;
+    const cfg = configs[Math.min(level, configs.length - 1)] || {};
+    statusNode.textContent = cfg.hell ? '☠ 地狱挑战 — 只有1条命，高手行？' : `第 ${level+1} 关 进行中`;
   }
 
   function startFresh() {
