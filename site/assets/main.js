@@ -137,11 +137,11 @@ const SFX = {
    ========================================================== */
 const LEVEL_CONFIGS = {
   jump: [
-    { gapMin: 100, gapMax: 170, wMin: 105, wMax: 150, target: 8,  bg: 0 },
-    { gapMin: 115, gapMax: 195, wMin: 90,  wMax: 135, target: 12, bg: 1 },
-    { gapMin: 130, gapMax: 210, wMin: 80,  wMax: 120, target: 16, bg: 2, moving: true },
-    { gapMin: 140, gapMax: 220, wMin: 75,  wMax: 110, target: 20, bg: 3, moving: true, crumble: true },
-    { gapMin: 150, gapMax: 240, wMin: 65,  wMax: 100, target: 0,  bg: 4, moving: true, crumble: true, wind: true },
+    { gapMin: 160, gapMax: 240, wMin: 115, wMax: 160, target: 8,  bg: 0 },
+    { gapMin: 180, gapMax: 270, wMin: 100, wMax: 145, target: 12, bg: 1 },
+    { gapMin: 200, gapMax: 300, wMin: 90,  wMax: 130, target: 16, bg: 2, moving: true },
+    { gapMin: 220, gapMax: 330, wMin: 80,  wMax: 120, target: 20, bg: 3, moving: true, crumble: true },
+    { gapMin: 240, gapMax: 360, wMin: 70,  wMax: 110, target: 0,  bg: 4, moving: true, crumble: true, wind: true },
   ],
   connect: [
     { nodes: 5,  edges: 6,  time: 90,  bg: 0 },
@@ -230,61 +230,75 @@ function showLevelFailed(container, lvl, lives, onRetry, onQuit) {
 function paintThemedBg(ctx, w, h, theme, t) {
   t = t || 0;
   const themes = [
-    // 0: Neon City (深蓝+网格)
+    // 0: 糖果蓝天 — 柔和蓝粉渐变+云朵
     () => {
       const g = ctx.createLinearGradient(0,0,0,h);
-      g.addColorStop(0,'#0a1220'); g.addColorStop(1,'#101a2d');
+      g.addColorStop(0,'#a8d8f0'); g.addColorStop(0.5,'#d4e8f7'); g.addColorStop(1,'#f0e6f6');
       ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-      drawGrid(ctx,w,h,36,'rgba(104,213,255,0.06)');
-    },
-    // 1: Digital Rain (绿色矩阵雨)
-    () => {
-      const g = ctx.createLinearGradient(0,0,0,h);
-      g.addColorStop(0,'#040e08'); g.addColorStop(1,'#0a1a10');
-      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-      ctx.fillStyle = 'rgba(138,226,111,0.08)'; ctx.font = '10px monospace';
-      for (let i = 0; i < 40; i++) {
-        const x = (i * 29) % w, y = ((t * (1 + i % 3) + i * 47) % (h + 200)) - 100;
-        ctx.fillText(String.fromCharCode(0x30A0 + (i * 7 + t) % 60), x, y);
+      // 软云朵
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      for (let i = 0; i < 5; i++) {
+        const cx = ((i * 180 + t * 0.3) % (w + 200)) - 100;
+        const cy = 30 + i * 50 + Math.sin(t * 0.01 + i) * 10;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 60 + i * 10, 22, 0, 0, Math.PI * 2); ctx.fill();
       }
-      drawGrid(ctx,w,h,36,'rgba(138,226,111,0.04)');
+      drawGrid(ctx,w,h,40,'rgba(120,160,220,0.08)');
     },
-    // 2: Cyber Sunset (橙紫渐变)
+    // 1: 薄荷森林 — 清新绿+飘落叶子
     () => {
       const g = ctx.createLinearGradient(0,0,0,h);
-      g.addColorStop(0,'#1a0a1e'); g.addColorStop(0.5,'#201020'); g.addColorStop(1,'#180808');
+      g.addColorStop(0,'#b8e6c8'); g.addColorStop(0.6,'#d4f0dc'); g.addColorStop(1,'#e8f5e0');
       ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-      ctx.fillStyle = 'rgba(255,138,91,0.06)';
-      ctx.fillRect(0, h*0.4, w, 2);
-      ctx.fillRect(0, h*0.6, w, 1);
-      drawGrid(ctx,w,h,36,'rgba(255,138,91,0.05)');
+      ctx.fillStyle = 'rgba(100,180,120,0.15)'; ctx.font = '14px serif';
+      for (let i = 0; i < 12; i++) {
+        const x = (i * 73 + t * 0.5) % (w + 40) - 20;
+        const y = ((t * 0.4 + i * 59) % (h + 60)) - 30;
+        const r = Math.sin(t * 0.03 + i) * 0.5;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(r);
+        ctx.fillText('🍃', 0, 0);
+        ctx.restore();
+      }
+      drawGrid(ctx,w,h,40,'rgba(80,160,100,0.06)');
     },
-    // 3: Void Space (深空+星星)
+    // 2: 日落橘 — 温暖橙粉+光晕
     () => {
-      ctx.fillStyle = '#050508'; ctx.fillRect(0,0,w,h);
-      for (let i = 0; i < 50; i++) {
-        const sx = (i * 137 + t * 0.1) % w, sy = (i * 89) % h;
-        const bright = 0.2 + Math.sin(t * 0.02 + i) * 0.15;
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#ffd4a8'); g.addColorStop(0.4,'#ffb8a0'); g.addColorStop(1,'#f0c8e0');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      // 太阳光晕
+      const sunX = w * 0.75, sunY = h * 0.2;
+      const sg = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 120);
+      sg.addColorStop(0,'rgba(255,220,140,0.5)'); sg.addColorStop(1,'rgba(255,180,120,0)');
+      ctx.fillStyle = sg; ctx.fillRect(0,0,w,h);
+      drawGrid(ctx,w,h,40,'rgba(200,140,100,0.07)');
+    },
+    // 3: 星空紫 — 柔和紫蓝+闪星（不是黑色）
+    () => {
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#8b7cc8'); g.addColorStop(0.5,'#a48dd8'); g.addColorStop(1,'#c8b8e8');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      for (let i = 0; i < 35; i++) {
+        const sx = (i * 137 + t * 0.15) % w, sy = (i * 89) % h;
+        const bright = 0.4 + Math.sin(t * 0.03 + i) * 0.3;
         ctx.fillStyle = `rgba(255,255,255,${bright})`;
-        ctx.beginPath(); ctx.arc(sx, sy, 1 + (i % 3) * 0.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, sy, 1.5 + (i % 3), 0, Math.PI * 2); ctx.fill();
       }
     },
-    // 4: Glitch Core (RGB抖动+随机色块)
+    // 4: 彩虹派对 — 多彩渐变+闪烁色块
     () => {
-      const g = ctx.createLinearGradient(0,0,0,h);
-      g.addColorStop(0,'#0c0814'); g.addColorStop(1,'#100810');
+      const g = ctx.createLinearGradient(0,0,w,h);
+      g.addColorStop(0,'#ffc8d0'); g.addColorStop(0.25,'#c8e0ff'); g.addColorStop(0.5,'#c8ffd8');
+      g.addColorStop(0.75,'#fff0c0'); g.addColorStop(1,'#e0c8ff');
       ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-      // 随机闪烁色块
-      if (Math.random() < 0.15) {
-        const bx = Math.random() * w, by = Math.random() * h;
-        ctx.fillStyle = `rgba(${Math.random()>0.5?'255,107,156':'124,140,255'},0.12)`;
-        ctx.fillRect(bx, by, 20+Math.random()*60, 3+Math.random()*8);
+      // 彩色泡泡
+      const cols = ['rgba(255,140,170,0.2)','rgba(140,200,255,0.2)','rgba(140,255,180,0.2)','rgba(255,220,120,0.2)','rgba(190,160,255,0.2)'];
+      for (let i = 0; i < 10; i++) {
+        const bx = (i * 97 + t * 0.4) % (w + 80) - 40;
+        const by = (i * 67 + Math.sin(t * 0.015 + i) * 30) % h;
+        ctx.fillStyle = cols[i % cols.length];
+        ctx.beginPath(); ctx.arc(bx, by, 15 + (i % 4) * 8, 0, Math.PI * 2); ctx.fill();
       }
-      drawGrid(ctx,w,h,36,'rgba(124,140,255,0.06)');
-      // RGB偏移线
-      ctx.strokeStyle = 'rgba(255,0,0,0.04)'; ctx.lineWidth = 1;
-      const ly = (t * 2) % h;
-      ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(w,ly); ctx.stroke();
+      drawGrid(ctx,w,h,40,'rgba(180,140,220,0.06)');
     }
   ];
   (themes[theme] || themes[0])();
@@ -1394,26 +1408,30 @@ function jumpGame(container, api) {
 
   function draw() {
     paintThemedBg(ctx, w, h, cfg.bg || 0, tick_t);
+    // 鲜艳平台 — 多种颜色，当前平台高亮
+    const platColors = ['#ff8a5b','#68d5ff','#8ae26f','#ff6b9c','#ffd166','#7c8cff'];
     platforms.forEach((p, index) => {
-      ctx.fillStyle = index === landed ? 'rgba(255,138,91,0.85)' : 'rgba(104,213,255,0.72)';
-      roundRect(ctx, p.x, p.y, p.width, p.height, 10, true);
+      const isCur = index === landed;
+      ctx.fillStyle = isCur ? '#ffd166' : platColors[index % platColors.length];
+      roundRect(ctx, p.x, p.y, p.width, p.height, 12, true);
+      // 平台光泽
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      roundRect(ctx, p.x + 4, p.y + 2, p.width - 8, 6, 4, true);
+      // 移动平台标记
+      if (p.moving) {
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('↕', p.x + p.width / 2, p.y + p.height / 2 + 3);
+      }
+      // 碎裂平台标记
+      if (p.crumble) {
+        ctx.strokeStyle = 'rgba(255,80,80,0.5)'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+        roundRect(ctx, p.x, p.y, p.width, p.height, 12, false); ctx.stroke();
+        ctx.setLineDash([]);
+      }
     });
 
-    ctx.fillStyle = mascot.accent;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.r + 6, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = mascot.color;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#0e1520';
-    ctx.font = '700 15px "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(mascot.face, player.x, player.y + 1);
+    // 可爱角色 — 用 drawMascot
+    drawMascot(ctx, mascot.id, player.x, player.y, player.r * 2.5, tick_t);
   }
 
   function tick() {
@@ -2128,21 +2146,46 @@ function runnerGame(container, api) {
       ctx.fillStyle = 'rgba(104,213,255,0.6)';
       roundRect(ctx, 10, 10, (w - 20) * pct, 8, 4, true);
     }
-    obstacles.forEach(item => {
-      ctx.fillStyle = '#ff6b9c';
-      roundRect(ctx, item.x, player.ground - item.h, item.w, item.h, 8, true);
+    // 障碍物 — 多种形状和颜色
+    const obstColors = ['#ff6b9c','#ff8a5b','#7c8cff','#e85d75','#c060e0'];
+    obstacles.forEach((item, i) => {
+      const ox = item.x, oy = player.ground - item.h, ow = item.w, oh = item.h;
+      ctx.fillStyle = obstColors[i % obstColors.length];
+      // 交替不同形状
+      if (i % 4 === 0) {
+        // 三角形锥
+        ctx.beginPath(); ctx.moveTo(ox + ow/2, oy - 6); ctx.lineTo(ox + ow + 4, oy + oh); ctx.lineTo(ox - 4, oy + oh); ctx.closePath(); ctx.fill();
+      } else if (i % 4 === 1) {
+        // 圆柱
+        roundRect(ctx, ox, oy, ow, oh, ow/2, true);
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        roundRect(ctx, ox + 3, oy + 3, ow * 0.3, oh - 6, 4, true);
+      } else if (i % 4 === 2) {
+        // 菱形
+        ctx.beginPath(); ctx.moveTo(ox + ow/2, oy - 4); ctx.lineTo(ox + ow + 4, oy + oh/2);
+        ctx.lineTo(ox + ow/2, oy + oh + 4); ctx.lineTo(ox - 4, oy + oh/2); ctx.closePath(); ctx.fill();
+      } else {
+        // 带齿矩形
+        roundRect(ctx, ox, oy, ow, oh, 6, true);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        for (let s = 0; s < 3; s++) ctx.fillRect(ox + 4 + s * (ow/3), oy + 4, ow/3 - 6, 4);
+      }
+      // 顶部闪光
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(ox + ow/2, oy + 4, ow * 0.3, 3, 0, 0, Math.PI * 2); ctx.fill();
     });
+    // 金币 — 更鲜艳+光圈
     coins.forEach(item => {
+      // 光圈
+      ctx.fillStyle = item.mascot.accent + '44';
+      ctx.beginPath(); ctx.arc(item.x, item.y, item.r + 4, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = item.mascot.color;
       ctx.beginPath(); ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0e1520'; ctx.font = '700 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff'; ctx.font = '700 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(item.mascot.face, item.x, item.y + 1);
     });
-    // 玩家
-    ctx.fillStyle = mascot.color;
-    roundRect(ctx, player.x, player.y - player.h, player.w, player.h, 12, true);
-    ctx.fillStyle = '#0e1520'; ctx.font = '700 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(mascot.face, player.x + player.w / 2, player.y - player.h / 2 + 1);
+    // 玩家 — 用角色绘制
+    drawMascot(ctx, mascot.id, player.x + player.w / 2, player.y - player.h / 2, player.h + 6, tick);
     // 二段跳提示
     if (hasDoubleJump && player.y < player.ground) {
       ctx.fillStyle = 'rgba(104,213,255,0.4)'; ctx.font = '10px sans-serif';
