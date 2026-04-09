@@ -1,20 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+
 :root{
-  --bg:#f6f8fa;
-  --card:#ffffff;
-  --accent:#2b7cff;
-  --muted:#666;
+  --bg:#06060a; /* deep black */
+  --panel:rgba(10,6,20,0.6);
+  --card:#0f0520;
+  --neon:#a14cff; /* purple neon */
+  --neon-2:#00ffd1; /* cyan accent */
+  --muted:#9aa0b4;
 }
+
 *{box-sizing:border-box}
-body{font-family:Segoe UI, Roboto, "Microsoft Yahei", sans-serif;margin:0;background:var(--bg);color:#111}
-.site-header{background:#fff;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;box-shadow:0 1px 0 rgba(0,0,0,0.06)}
-.site-header h1{margin:0;font-size:1.1rem}
+html,body{height:100%}
+body{font-family:Inter, 'Segoe UI', system-ui, -apple-system, 'Microsoft Yahei', sans-serif;margin:0;background:linear-gradient(180deg,var(--bg),#0b0210);color:#e6e6e6}
+.site-header{background:linear-gradient(90deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.03);backdrop-filter:blur(6px)}
+.site-header h1{margin:0;font-size:1.1rem;color:var(--neon);font-family:Orbitron,Inter, sans-serif;letter-spacing:1px}
 .site-header nav a{margin-left:12px;color:var(--muted);text-decoration:none}
-.site-header nav a.auth{color:var(--accent);font-weight:600}
+.site-header nav a.auth{color:var(--neon);font-weight:700}
 .container{max-width:980px;margin:28px auto;padding:0 16px}
 .games-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-top:18px}
-.game-card{display:flex;align-items:center;justify-content:center;height:120px;background:var(--card);border-radius:8px;text-decoration:none;color:#111;font-weight:700;box-shadow:0 6px 18px rgba(11,22,46,0.06)}
+.game-card{display:flex;align-items:center;justify-content:center;height:120px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:8px;text-decoration:none;color:#fff;font-weight:700;box-shadow:0 8px 40px rgba(161,76,255,0.06);border:1px solid rgba(161,76,255,0.12);transition:transform .18s ease, box-shadow .18s ease}
+.game-card:hover{transform:translateY(-6px);box-shadow:0 18px 48px rgba(161,76,255,0.18)}
 .intro p{color:var(--muted)}
-.auth-forms{max-width:420px;margin:24px auto;background:var(--card);padding:16px;border-radius:8px;box-shadow:0 6px 18px rgba(11,22,46,0.04)}
+.auth-forms{max-width:420px;margin:24px auto;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
 .auth-forms label{display:block;margin:8px 0 4px;color:var(--muted)}
-.auth-forms input{width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef}
-.auth-forms button{margin-top:12px;padding:10px 14px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-weight:600}
+.auth-forms input{width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:#fff}
+.auth-forms button{margin-top:12px;padding:10px 14px;border:0;border-radius:6px;background:linear-gradient(90deg,var(--neon),var(--neon-2));color:#06060a;font-weight:700}
+
+/* Game area */
+.game-area{min-height:260px;border-radius:8px;background:linear-gradient(135deg,rgba(255,255,255,0.01),rgba(0,0,0,0.25));border:1px solid rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.game-area .neon-text{font-family:Orbitron,Inter; font-size:1.6rem; color:var(--neon); text-shadow:0 0 10px rgba(161,76,255,0.6), 0 0 30px rgba(0,255,209,0.08)}
+
+.game-controls{display:flex;align-items:center;gap:12px;margin-top:12px}
+.game-controls button{padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(90deg,var(--neon),#7a1bff);color:#fff;font-weight:700}
+.score{color:var(--muted);font-weight:700}
+
+.leaderboard{margin-top:16px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+.leaderboard h3{margin:0 0 8px 0;color:var(--neon)}
+.leaderboard ol{margin:0;padding-left:20px;color:var(--muted)}
+
+/* small animations */
+.pulse{animation:pulse 1.6s infinite ease-in-out}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(161,76,255,0.2)}50%{box-shadow:0 0 40px 18px rgba(161,76,255,0.06)}100%{box-shadow:0 0 0 0 rgba(161,76,255,0.0)}}
+
+.floating{
+  animation:floaty 6s ease-in-out infinite;
+}
+@keyframes floaty{0%{transform:translateY(0)}50%{transform:translateY(-10px)}100%{transform:translateY(0)}}

@@ -10,7 +10,12 @@
     <header class="site-header"><h1>消消乐</h1><nav><a href="/site/index.html">返回</a></nav></header>
     <main class="container">
       <p>这是“消消乐”游戏的占位页。实现合并/消除方块的逻辑。</p>
-      <div class="game-card" style="height:300px;align-items:flex-start;padding:12px;"><small style="color:#666">游戏画布占位</small></div>
+      <div id="game-area" class="game-area" data-game="match3"></div>
+      <div class="game-controls">
+        <button id="start-btn">开始</button>
+        <div class="score">分数: <span id="score">0</span></div>
+      </div>
+      <section class="leaderboard" id="leaderboard"></section>
     </main>
     <script src="/site/assets/main.js"></script>
   </body>

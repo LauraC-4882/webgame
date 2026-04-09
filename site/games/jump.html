@@ -3,14 +3,19 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>跳一跳</title>
+    <title>跳一跳 — Jump</title>
     <link rel="stylesheet" href="/site/assets/style.css">
   </head>
   <body>
     <header class="site-header"><h1>跳一跳</h1><nav><a href="/site/index.html">返回</a></nav></header>
     <main class="container">
-      <p>这是“跳一跳”游戏的占位页。你可以在这里加入 Canvas 或游戏逻辑。</p>
-      <div class="game-card" style="height:300px;align-items:flex-start;padding:12px;"><small style="color:#666">游戏画布占位</small></div>
+      <p>点击或空格开始跳跃并累积分数，尽可能跳得更高。</p>
+      <div id="game-area" class="game-area" data-game="jump"></div>
+      <div class="game-controls">
+        <button id="start-btn">开始</button>
+        <div class="score">分数: <span id="score">0</span></div>
+      </div>
+      <section class="leaderboard" id="leaderboard"></section>
     </main>
     <script src="/site/assets/main.js"></script>
   </body>
