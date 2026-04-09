@@ -320,42 +320,86 @@ function initAmbientBackground() {
   canvas.id = 'ambient-canvas';
   document.body.prepend(canvas);
   const ctx = canvas.getContext('2d');
-  const dots = Array.from({ length: 36 }, () => ({
-    x: Math.random(),
-    y: Math.random(),
-    r: 1 + Math.random() * 3,
-    s: 0.00015 + Math.random() * 0.00035,
-    glow: Math.random() > 0.45 ? '104,213,255' : '255,138,91'
+
+  // 霓虹粒子 — 多色浮动光球
+  const particles = Array.from({ length: 50 }, () => ({
+    x: Math.random(), y: Math.random(),
+    r: 1.5 + Math.random() * 3,
+    sx: (Math.random() - 0.5) * 0.0003,
+    sy: 0.0002 + Math.random() * 0.0004,
+    col: ['104,213,255','255,138,91','124,140,255','255,107,156','138,226,111'][Math.floor(Math.random()*5)],
+    alpha: 0.2 + Math.random() * 0.4
   }));
-  let w = 0;
-  let h = 0;
+
+  // 城市天际线配置
+  const buildings = Array.from({ length: 16 }, (_, i) => ({
+    x: i / 16, w: 0.04 + Math.random() * 0.03,
+    h: 0.06 + Math.random() * 0.16,
+    windows: Math.floor(2 + Math.random() * 4)
+  }));
+
+  let w = 0, h = 0, t = 0;
 
   function resize() {
-    w = innerWidth;
-    h = innerHeight;
-    canvas.width = w;
-    canvas.height = h;
+    w = innerWidth; h = innerHeight;
+    canvas.width = w; canvas.height = h;
   }
 
   function frame() {
-    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    t++;
     ctx.clearRect(0, 0, w, h);
-    bg.addColorStop(0, '#0a1220');
-    bg.addColorStop(0.55, '#101a2d');
-    bg.addColorStop(1, '#12182a');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
-    drawGrid(ctx, w, h, 42, 'rgba(255,255,255,0.05)');
-    dots.forEach(dot => {
-      dot.y += dot.s;
-      if (dot.y > 1.05) {
-        dot.y = -0.05;
-        dot.x = Math.random();
+
+    // 深色渐变底 — 偏蓝紫，带微妙色彩
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#080e1c');
+    bg.addColorStop(0.4, '#0c1528');
+    bg.addColorStop(0.7, '#10182e');
+    bg.addColorStop(1, '#0e1424');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+
+    // 远景城市轮廓
+    buildings.forEach(b => {
+      const bx = b.x * w, bw = b.w * w, bh = b.h * h;
+      const by = h - bh;
+      ctx.fillStyle = 'rgba(14,20,40,0.9)';
+      ctx.fillRect(bx, by, bw, bh);
+      // 窗户
+      const cols = Math.max(2, Math.floor(bw / 10));
+      const rows = b.windows;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const lit = ((r * 3 + c * 7 + Math.floor(t / 120)) % 5) < 3;
+          if (!lit) continue;
+          const wx = bx + 3 + c * (bw - 6) / cols;
+          const wy = by + 6 + r * (bh - 12) / rows;
+          const warm = (r + c) % 3 === 0;
+          ctx.fillStyle = warm ? 'rgba(255,200,100,0.35)' : 'rgba(104,213,255,0.3)';
+          ctx.fillRect(wx, wy, 4, 5);
+        }
       }
-      ctx.fillStyle = `rgba(${dot.glow},0.65)`;
-      ctx.beginPath();
-      ctx.arc(dot.x * w, dot.y * h, dot.r, 0, Math.PI * 2);
-      ctx.fill();
+      // 楼顶霓虹线
+      ctx.strokeStyle = (Math.floor(b.x * 10) % 2 === 0) ? 'rgba(255,138,91,0.25)' : 'rgba(104,213,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.stroke();
+    });
+
+    // 地面辉光
+    const glow = ctx.createLinearGradient(0, h - 40, 0, h);
+    glow.addColorStop(0, 'rgba(124,140,255,0.12)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, h - 40, w, 40);
+
+    // 浮动粒子
+    particles.forEach(p => {
+      p.x += p.sx; p.y += p.sy;
+      if (p.y > 1.05) { p.y = -0.05; p.x = Math.random(); }
+      if (p.x < -0.02 || p.x > 1.02) p.sx *= -1;
+      const pulse = p.alpha + Math.sin(t * 0.02 + p.x * 10) * 0.15;
+      ctx.fillStyle = `rgba(${p.col},${pulse})`;
+      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2); ctx.fill();
+      // 微光晕
+      ctx.fillStyle = `rgba(${p.col},${pulse * 0.15})`;
+      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, p.r * 3, 0, Math.PI * 2); ctx.fill();
     });
     requestAnimationFrame(frame);
   }
