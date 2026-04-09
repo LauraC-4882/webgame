@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Merge</title>
+  <title>赛博解密局</title>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -23,10 +23,10 @@
         <a href="./jump.html">jump</a>
         <a href="./match3.html">match3</a>
         <a href="./memory.html">memory</a>
-        <a class="is-current" href="./merge.html">merge</a>
+        <a href="./merge.html">merge</a>
         <a href="./runner.html">runner</a>
         <a href="./tap.html">tap</a>
-        <a href="./logic.html">logic</a>
+        <a class="is-current" href="./logic.html">logic</a>
       </nav>
 
       <div class="auth-links">
@@ -39,17 +39,19 @@
       <section class="game-layout">
         <div class="game-main">
           <section class="panel game-head">
-            <p class="eyebrow">// 进化论.dll 已激活</p>
-            <h1>合成大作战</h1>
-            <p>两个一样的放隔壁就自动合体进化。听着简单对吧？等你棋盘堵死了、步数用完了、分数还差一大截的时候再说。</p>
+            <p class="eyebrow">// 智商检测.sys 启动中...</p>
+            <h1>赛博解密局</h1>
+            <p>三种谜题轮着来：数列找规律、灯泡全点亮、密码暴力猜。每一关都在测试你的脑子到底是装饰品还是生产力工具。</p>
             <p class="muted" style="font-size:.82rem;margin-top:8px">
-              📋 <strong>规则</strong>：5关+☠地狱关，3条命。合并得分 = 等级×数量×15。
-              棋盘从4×4长到6×6，每关有步数上限和目标分数。步数归零或者棋盘满了没得合就寄了。
-              省下的步数×5是通关奖励。地狱关：4×4迷你棋盘要5000分，只有15步，想想就离谱。
+              📋 <strong>规则</strong>：5关+☠地狱关，3条命。三种谜题类型：<br>
+              🔢 <strong>数列推理</strong>（第1-2关）：找出数列规律，输入下一个数。答错可以重试但时间在走。+100分。<br>
+              💡 <strong>灯泡谜题</strong>（第3-4关）：点一格联动十字方向，全部点亮过关。步数越少分越高。+150分。<br>
+              🔐 <strong>密码破译</strong>（第5关）：猜4位数密码，🟢=数字和位置都对，🟡=数字对位置不对。+200分。<br>
+              ☠ 地狱关：5位密码，30秒，不给颜色提示。纯靠推理，祝你好运。
             </p>
           </section>
 
-          <div id="game-area" class="game-area" data-game="merge"></div>
+          <div id="game-area" class="game-area" data-game="logic"></div>
 
           <div class="game-controls">
             <button id="start-btn">开始</button>
@@ -73,9 +75,9 @@
               <a href="./jump.html">jump</a>
               <a href="./match3.html">match3</a>
               <a href="./memory.html">memory</a>
+              <a href="./merge.html">merge</a>
               <a href="./runner.html">runner</a>
               <a href="./tap.html">tap</a>
-              <a href="./logic.html">logic</a>
             </div>
           </section>
         </aside>

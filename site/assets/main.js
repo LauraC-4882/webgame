@@ -49,7 +49,9 @@ const GAME_META = {
   match3: { label: '消消乐但有压力', desc: '三个连一起就爆，步数有限。' },
   memory: { label: '记忆靠谱吗', desc: '看几秒全扣上，然后考验脑子。' },
   merge: { label: '合成大作战', desc: '两个一样的合体进化，棋盘会堵死。' },
-  runner: { label: '赛博逃命', desc: '跑就完了，越跑越快到离谱。' }
+  runner: { label: '赛博逃命', desc: '跑就完了，越跑越快到离谱。' },
+  tap: { label: '点点点保卫战', desc: '球到处乱飞，点它防溢出，自选难度。' },
+  logic: { label: '赛博解密局', desc: '推理+解密，脑子是装饰品还是工具？' }
 };
 
 /* ==========================================================
@@ -220,6 +222,24 @@ const LEVEL_CONFIGS = {
     { speed: 7.0, accel: 0.28, obstFreq: 60,  dist: 0,    bg: 4, doubleJump: true, slide: true },
     // ☠ 地狱关：起始速度9，障碍每35帧出一个，跑5000米，没有二段跳
     { speed: 9.0, accel: 0.35, obstFreq: 35, dist: 5000, bg: 4, doubleJump: false, hell: true },
+  ],
+  tap: [
+    { balls: 5,  speed: 2.0, radius: 18, clicks: 3, time: 30, bg: 0 },
+    { balls: 8,  speed: 2.8, radius: 15, clicks: 3, time: 28, bg: 1 },
+    { balls: 12, speed: 3.5, radius: 13, clicks: 4, time: 25, bg: 2 },
+    { balls: 16, speed: 4.2, radius: 11, clicks: 4, time: 22, bg: 3 },
+    { balls: 20, speed: 5.0, radius: 10, clicks: 5, time: 20, bg: 4 },
+    // ☠ 地狱：30个球，速度7，极小，点6次才消，15秒
+    { balls: 30, speed: 7.0, radius: 8, clicks: 6, time: 15, bg: 4, hell: true },
+  ],
+  logic: [
+    { type: 'sequence', len: 4, time: 40, bg: 0 },
+    { type: 'sequence', len: 5, time: 35, bg: 1 },
+    { type: 'gridLogic', size: 4, time: 50, bg: 2 },
+    { type: 'gridLogic', size: 5, time: 45, bg: 3 },
+    { type: 'codeBreak', digits: 4, time: 60, bg: 4 },
+    // ☠ 地狱：5位密码，30秒，没有任何提示颜色
+    { type: 'codeBreak', digits: 5, time: 30, bg: 4, hell: true, noColor: true },
   ],
 };
 
@@ -819,7 +839,7 @@ function ensureStatusNode() {
 }
 
 function createControllerFor(type, container, api) {
-  const map = { connect: connectGame, jump: jumpGame, match3: match3Game, memory: memoryGame, merge: mergeGame, runner: runnerGame };
+  const map = { connect: connectGame, jump: jumpGame, match3: match3Game, memory: memoryGame, merge: mergeGame, runner: runnerGame, tap: tapGame, logic: logicGame };
   return (map[type] || genericGame)(container, api);
 }
 
@@ -2660,6 +2680,397 @@ function runnerGame(container, api) {
       removeEventListener('keydown', keydown);
       removeEventListener('resize', resize);
     }
+  };
+}
+
+/* ==========================================================
+   TAP GAME — 点点点保卫战
+   球到处乱飞，点它防溢出。自选难度参数。
+   ========================================================== */
+function tapGame(container, api) {
+  const wrap = createGameShell('点点点保卫战', '球在框里乱飞，点它让它消停。溢出就扣命！');
+  const canvas = document.createElement('canvas');
+  canvas.className = 'cw-canvas';
+  wrap.appendChild(canvas);
+  container.appendChild(wrap);
+  const ctx = canvas.getContext('2d');
+  let raf = 0, w = 0, h = 0, tick = 0;
+  let cfg = {}, balls = [], escaped = 0, maxEscape = 3, timeLeft = 30;
+  let timerInterval = null;
+
+  function resize() {
+    w = Math.max(320, container.clientWidth - 24);
+    h = Math.max(380, Math.floor(innerHeight * 0.55));
+    canvas.width = w; canvas.height = h;
+  }
+
+  function spawnBall() {
+    const icon = choice(CYBER_ICONS);
+    return {
+      x: 60 + Math.random() * (w - 120),
+      y: 60 + Math.random() * (h - 120),
+      vx: (Math.random() - 0.5) * cfg.speed * 2,
+      vy: (Math.random() - 0.5) * cfg.speed * 2,
+      r: cfg.radius || 15,
+      hp: cfg.clicks || 3,
+      maxHp: cfg.clicks || 3,
+      icon,
+      shake: 0, // 被点击后的抖动
+    };
+  }
+
+  function reset() {
+    resize();
+    cfg = api.getLevelConfig();
+    escaped = 0;
+    maxEscape = 3;
+    timeLeft = cfg.time || 30;
+    tick = 0;
+    balls = Array.from({ length: cfg.balls || 5 }, () => spawnBall());
+    api.setScore(0);
+    api.setStatus(`第${api.level+1}关 — ${cfg.balls}个球 点${cfg.clicks}次消除 ${timeLeft}秒`);
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft <= 5 && timeLeft > 0) SFX.play('tick');
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        // 时间到，还有球活着算失败
+        if (balls.length > 0) api.levelFailed('时间到了，还有球在飞');
+        else api.levelComplete(0);
+      }
+    }, 1000);
+  }
+
+  function update() {
+    tick++;
+    balls.forEach(b => {
+      b.x += b.vx; b.y += b.vy;
+      if (b.shake > 0) b.shake--;
+      // 碰壁反弹
+      if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
+      if (b.x + b.r > w) { b.x = w - b.r; b.vx = -Math.abs(b.vx); }
+      if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
+      if (b.y + b.r > h) { b.y = h - b.r; b.vy = -Math.abs(b.vy); }
+    });
+  }
+
+  function draw() {
+    paintThemedBg(ctx, w, h, cfg.bg || 0, tick);
+    // 框
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.setLineDash([]);
+    // HUD
+    ctx.fillStyle = '#fff'; ctx.font = '600 13px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`剩余 ${balls.length} 球 · ⏱ ${Math.max(0,timeLeft)}s · 溢出 ${escaped}/${maxEscape}`, 12, 22);
+    // 球
+    balls.forEach(b => {
+      const shakeX = b.shake > 0 ? Math.sin(b.shake * 2) * 3 : 0;
+      // 血量环
+      const hpPct = b.hp / b.maxHp;
+      ctx.strokeStyle = `rgba(255,${Math.round(hpPct*200)},${Math.round(hpPct*100)},0.7)`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(b.x + shakeX, b.y, b.r + 4, 0, Math.PI * 2 * hpPct); ctx.stroke();
+      // 球体
+      ctx.fillStyle = b.icon.color;
+      ctx.beginPath(); ctx.arc(b.x + shakeX, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      // 高光
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.arc(b.x + shakeX - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.35, 0, Math.PI * 2); ctx.fill();
+      // 表情
+      ctx.fillStyle = '#fff'; ctx.font = `${Math.round(b.r * 1.1)}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(b.icon.face, b.x + shakeX, b.y + 1);
+      // 血量数字
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = '700 9px sans-serif';
+      ctx.fillText(`×${b.hp}`, b.x + shakeX, b.y + b.r + 12);
+    });
+  }
+
+  function loop() {
+    update(); draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function tapAt(x, y) {
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i];
+      if (Math.hypot(x - b.x, y - b.y) <= b.r + 8) {
+        b.hp--;
+        b.shake = 8;
+        SFX.play('flip');
+        if (b.hp <= 0) {
+          api.addScore(20);
+          SFX.play('correct');
+          showScorePopup(canvas.parentNode, '+20', x, y - 20, b.icon.color);
+          balls.splice(i, 1);
+          if (balls.length === 0) {
+            clearInterval(timerInterval);
+            api.levelComplete(Math.max(0, timeLeft) * 3);
+          }
+        }
+        return;
+      }
+    }
+  }
+
+  function onClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches?.[0];
+    const cx = (touch ? touch.clientX : e.clientX) - rect.left;
+    const cy = (touch ? touch.clientY : e.clientY) - rect.top;
+    e.preventDefault?.();
+    tapAt(cx, cy);
+  }
+
+  return {
+    start() {
+      reset(); loop();
+      canvas.addEventListener('mousedown', onClick);
+      canvas.addEventListener('touchstart', onClick, { passive: false });
+      addEventListener('resize', resize);
+    },
+    stop() {
+      cancelAnimationFrame(raf);
+      clearInterval(timerInterval);
+      canvas.removeEventListener('mousedown', onClick);
+      canvas.removeEventListener('touchstart', onClick);
+      removeEventListener('resize', resize);
+    }
+  };
+}
+
+/* ==========================================================
+   LOGIC GAME — 赛博解密局
+   三种谜题类型轮换：数列推理、网格逻辑、密码破译
+   ========================================================== */
+function logicGame(container, api) {
+  const wrap = createGameShell('赛博解密局', '推理、解密、找规律。脑子好使吗？');
+  const puzzleBox = el('div', 'logic-box');
+  wrap.appendChild(puzzleBox);
+  container.appendChild(wrap);
+  let cfg = {}, timeLeft = 40, timerInterval = null;
+
+  function reset() {
+    cfg = api.getLevelConfig();
+    timeLeft = cfg.time || 40;
+    puzzleBox.innerHTML = '';
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft <= 5 && timeLeft > 0) SFX.play('tick');
+      if (timeLeft <= 0) { clearInterval(timerInterval); api.levelFailed('时间到了'); }
+    }, 1000);
+  }
+
+  // ========= 类型1：数列推理 =========
+  function sequencePuzzle() {
+    const len = cfg.len || 4;
+    // 生成规律数列
+    const rules = [
+      // 等差
+      () => { const a = 1 + Math.floor(Math.random()*5), d = 2 + Math.floor(Math.random()*4); return Array.from({length:len+1},(_,i)=>a+d*i); },
+      // 等比
+      () => { const a = 1 + Math.floor(Math.random()*3), r = 2; return Array.from({length:len+1},(_,i)=>a*Math.pow(r,i)); },
+      // 平方
+      () => { const b = Math.floor(Math.random()*3); return Array.from({length:len+1},(_,i)=>(i+1+b)*(i+1+b)); },
+      // 斐波那契变体
+      () => { const seq = [1+Math.floor(Math.random()*3), 2+Math.floor(Math.random()*3)]; for(let i=2;i<=len;i++) seq.push(seq[i-1]+seq[i-2]); return seq; },
+    ];
+    const seq = choice(rules)();
+    const answer = seq[len];
+    const shown = seq.slice(0, len);
+
+    puzzleBox.innerHTML = `
+      <div class="logic-title">🔢 找规律，下一个数是？</div>
+      <div class="logic-hint">⏱ <span class="logic-timer">${timeLeft}s</span></div>
+      <div class="logic-sequence">${shown.map(n => `<span class="logic-num">${n}</span>`).join('<span class="logic-arrow">→</span>')}<span class="logic-arrow">→</span><span class="logic-num logic-blank">?</span></div>
+      <div class="logic-input-row">
+        <input type="number" class="logic-input" placeholder="你的答案">
+        <button class="logic-submit">确认</button>
+      </div>
+    `;
+    // 更新计时
+    const timerEl = puzzleBox.querySelector('.logic-timer');
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      if (timerEl) timerEl.textContent = timeLeft + 's';
+      if (timeLeft <= 5 && timeLeft > 0) SFX.play('tick');
+      if (timeLeft <= 0) { clearInterval(timerInterval); api.levelFailed('时间到了'); }
+    }, 1000);
+
+    const input = puzzleBox.querySelector('.logic-input');
+    const btn = puzzleBox.querySelector('.logic-submit');
+    function submit() {
+      const val = parseInt(input.value);
+      if (val === answer) {
+        SFX.play('levelUp');
+        api.addScore(100);
+        clearInterval(timerInterval);
+        api.levelComplete(Math.max(0, timeLeft) * 5);
+      } else {
+        SFX.play('wrong');
+        input.value = '';
+        input.placeholder = `不对哦，再想想（还剩${timeLeft}s）`;
+        input.classList.add('shake');
+        setTimeout(() => input.classList.remove('shake'), 400);
+      }
+    }
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    input.focus();
+  }
+
+  // ========= 类型2：网格逻辑（灯泡谜题）=========
+  function gridLogicPuzzle() {
+    const size = cfg.size || 4;
+    // 生成一个目标状态，玩家需要通过点击切换达到全亮
+    // 点击一格会同时切换自身+上下左右
+    let grid = Array.from({ length: size }, () => Array.from({ length: size }, () => false));
+    // 随机走几步来生成谜题（保证可解）
+    const steps = 3 + Math.floor(Math.random() * (size - 1));
+    for (let i = 0; i < steps; i++) {
+      const r = Math.floor(Math.random() * size), c = Math.floor(Math.random() * size);
+      toggleCell(grid, r, c, size);
+    }
+
+    function toggleCell(g, r, c, s) {
+      [[r,c],[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([rr,cc]) => {
+        if (rr >= 0 && rr < s && cc >= 0 && cc < s) g[rr][cc] = !g[rr][cc];
+      });
+    }
+
+    let moves = 0;
+
+    function renderGrid() {
+      const timerHtml = `<div class="logic-hint">⏱ <span class="logic-timer">${timeLeft}s</span> · 步数 ${moves}</div>`;
+      puzzleBox.innerHTML = `
+        <div class="logic-title">💡 点亮所有灯！点一格会联动十字方向</div>
+        ${timerHtml}
+        <div class="logic-grid" style="grid-template-columns:repeat(${size},1fr)">${
+        grid.flat().map((on, idx) => {
+          const r = Math.floor(idx / size), c = idx % size;
+          return `<button class="logic-cell ${on ? 'on' : ''}" data-r="${r}" data-c="${c}">${on ? '💡' : '⬛'}</button>`;
+        }).join('')
+      }</div>`;
+      puzzleBox.querySelectorAll('.logic-cell').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const r = +btn.dataset.r, c = +btn.dataset.c;
+          toggleCell(grid, r, c, size);
+          moves++;
+          SFX.play('flip');
+          if (grid.flat().every(Boolean)) {
+            SFX.play('levelUp');
+            api.addScore(150 - moves * 5);
+            clearInterval(timerInterval);
+            api.levelComplete(Math.max(0, timeLeft) * 3);
+          } else {
+            renderGrid();
+          }
+        });
+      });
+    }
+
+    // 计时
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      const el = puzzleBox.querySelector('.logic-timer');
+      if (el) el.textContent = timeLeft + 's';
+      if (timeLeft <= 5 && timeLeft > 0) SFX.play('tick');
+      if (timeLeft <= 0) { clearInterval(timerInterval); api.levelFailed('时间到了'); }
+    }, 1000);
+
+    renderGrid();
+  }
+
+  // ========= 类型3：密码破译（Mastermind）=========
+  function codeBreakPuzzle() {
+    const digits = cfg.digits || 4;
+    const noColor = cfg.noColor || false;
+    // 生成密码（0-9，不重复）
+    const pool = shuffle([0,1,2,3,4,5,6,7,8,9]);
+    const code = pool.slice(0, digits);
+    let attempts = [];
+    const maxAttempts = digits + 4;
+
+    function check(guess) {
+      let exact = 0, partial = 0;
+      guess.forEach((g, i) => { if (g === code[i]) exact++; });
+      guess.forEach(g => { if (code.includes(g)) partial++; });
+      partial -= exact;
+      return { exact, partial };
+    }
+
+    function renderCode() {
+      puzzleBox.innerHTML = `
+        <div class="logic-title">🔐 破译${digits}位密码（数字0-9不重复）</div>
+        <div class="logic-hint">⏱ <span class="logic-timer">${timeLeft}s</span> · 尝试 ${attempts.length}/${maxAttempts}</div>
+        <div class="logic-hint" style="font-size:.8rem;margin-bottom:8px">
+          🟢 = 数字和位置都对 · 🟡 = 数字对位置不对${noColor ? ' · ☠ 地狱模式：不告诉你哪个对' : ''}
+        </div>
+        <div class="logic-attempts">${attempts.map(a => `
+          <div class="logic-row">
+            <span class="logic-guess">${a.guess.join(' ')}</span>
+            <span class="logic-result">${noColor ? `(${a.exact + a.partial}个数字对，${a.exact}个位置对)` : '🟢'.repeat(a.exact) + '🟡'.repeat(a.partial) + '⚫'.repeat(digits - a.exact - a.partial)}</span>
+          </div>
+        `).join('')}</div>
+        <div class="logic-input-row">
+          <input type="text" class="logic-input" maxlength="${digits * 2}" placeholder="输入${digits}位数字（如 ${code.map((_,i) => i).join('')}）">
+          <button class="logic-submit">猜！</button>
+        </div>
+      `;
+      const input = puzzleBox.querySelector('.logic-input');
+      const btn = puzzleBox.querySelector('.logic-submit');
+      function submit() {
+        const raw = input.value.replace(/\D/g, '');
+        if (raw.length !== digits) { input.placeholder = `要${digits}位数字！`; input.value = ''; return; }
+        const guess = raw.split('').map(Number);
+        const result = check(guess);
+        attempts.push({ guess, ...result });
+        if (result.exact === digits) {
+          SFX.play('levelUp');
+          api.addScore(200 - attempts.length * 15);
+          clearInterval(timerInterval);
+          api.levelComplete(Math.max(0, timeLeft) * 4);
+        } else if (attempts.length >= maxAttempts) {
+          SFX.play('gameOver');
+          clearInterval(timerInterval);
+          api.levelFailed(`密码是 ${code.join('')}，没猜出来`);
+        } else {
+          SFX.play('flip');
+          renderCode();
+        }
+      }
+      btn?.addEventListener('click', submit);
+      input?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+      input?.focus();
+    }
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      const el = puzzleBox.querySelector('.logic-timer');
+      if (el) el.textContent = timeLeft + 's';
+      if (timeLeft <= 5 && timeLeft > 0) SFX.play('tick');
+      if (timeLeft <= 0) { clearInterval(timerInterval); api.levelFailed('时间到了'); }
+    }, 1000);
+
+    renderCode();
+  }
+
+  return {
+    start() {
+      reset();
+      // 根据关卡类型选择谜题
+      const t = cfg.type || 'sequence';
+      if (t === 'sequence') sequencePuzzle();
+      else if (t === 'gridLogic') gridLogicPuzzle();
+      else if (t === 'codeBreak') codeBreakPuzzle();
+    },
+    stop() { clearInterval(timerInterval); }
   };
 }
 
