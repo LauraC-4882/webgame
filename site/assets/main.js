@@ -13,12 +13,12 @@ const WORLD = {
 };
 
 const GAME_META = {
-  connect: { label: 'Connect', desc: '拖动节点，解开交叉的线网。' },
-  jump: { label: 'Jump', desc: '按住蓄力，松开起跳。' },
-  match3: { label: 'Match 3', desc: '交换相邻图块，形成三连。' },
-  memory: { label: 'Memory', desc: '短暂预览后，把卡片两两配对。' },
-  merge: { label: 'Merge', desc: '放置棋子并自动合成升级。' },
-  runner: { label: 'Runner', desc: '点击或空格起跳，躲避障碍。' }
+  connect: { label: '解线大师', desc: '一堆乱线，拖一拖理清人生。' },
+  jump: { label: '蓄力弹射椅', desc: '按住蓄力松手起飞，力度全靠缘分。' },
+  match3: { label: '消消乐但有压力', desc: '三个连一起就爆，步数有限。' },
+  memory: { label: '记忆靠谱吗', desc: '看几秒全扣上，然后考验脑子。' },
+  merge: { label: '合成大作战', desc: '两个一样的合体进化，棋盘会堵死。' },
+  runner: { label: '赛博逃命', desc: '跑就完了，越跑越快到离谱。' }
 };
 
 /* ==========================================================
