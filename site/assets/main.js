@@ -482,6 +482,7 @@ function initHomePage() {
     card.append(cvs, name, tag, desc);
     if (check) card.appendChild(check);
     row.appendChild(card);
+    bindMascotInteraction(cvs, m.id);
     canvases.push({ cvs, id: m.id });
   });
 
@@ -512,14 +513,25 @@ function initHomePage() {
   }
   row.appendChild(bbCard);
 
-  // Animate all canvases
+  // Animate all canvases with interaction
   let t = 0;
   function animateCards() {
     t++;
     canvases.forEach(({ cvs, id }) => {
       const ctx = cvs.getContext('2d');
+      const state = getMascotState(cvs);
       ctx.clearRect(0, 0, 80, 80);
+      // 交互动态变形
+      const clickBounce = state.clickT > 0 ? Math.sin(state.clickT * 0.3) * 4 : 0;
+      const shakeWobble = state.shakeT > 0 ? Math.sin(state.shakeT * 0.8) * 3 : 0;
+      const hoverScale = state.hover ? 1.08 : 1;
+      ctx.save();
+      ctx.translate(40 + shakeWobble, 40 + clickBounce);
+      ctx.scale(hoverScale, hoverScale);
+      ctx.translate(-40, -40);
       drawMascot(ctx, id, 40, 40, 60, t);
+      ctx.restore();
+      drawMascotReaction(ctx, id, 40, 40, 60, t, state);
     });
     requestAnimationFrame(animateCards);
   }
@@ -541,6 +553,7 @@ function initGamePage() {
       nm.style.fontSize = '.65rem';
       card.append(cvs, nm);
       sideRow.appendChild(card);
+      bindMascotInteraction(cvs, m.id);
       sideCvs.push({ cvs, id: m.id });
     });
     let st = 0;
@@ -548,8 +561,16 @@ function initGamePage() {
       st++;
       sideCvs.forEach(({ cvs, id }) => {
         const ctx = cvs.getContext('2d');
+        const state = getMascotState(cvs);
         ctx.clearRect(0, 0, 48, 48);
+        const shk = state.shakeT > 0 ? Math.sin(state.shakeT * 0.8) * 2 : 0;
+        const clk = state.clickT > 0 ? Math.sin(state.clickT * 0.3) * 2 : 0;
+        const hs = state.hover ? 1.1 : 1;
+        ctx.save();
+        ctx.translate(24 + shk, 24 + clk); ctx.scale(hs, hs); ctx.translate(-24, -24);
         drawMascot(ctx, id, 24, 24, 38, st);
+        ctx.restore();
+        drawMascotReaction(ctx, id, 24, 24, 38, st, state);
       });
       requestAnimationFrame(animSide);
     })();
@@ -838,6 +859,210 @@ function markCollected(mascotId) {
 function allCollected() {
   const c = getCollection();
   return WORLD.mascots.every(m => c[m.id]);
+}
+
+/* ==========================================================
+   MASCOT INTERACTION SYSTEM — 悬浮/点击/摇晃
+   每个角色根据性格做不同反应
+   ========================================================== */
+// 交互状态存储：每个canvas对应一个状态对象
+const mascotStates = new Map();
+
+function getMascotState(cvs) {
+  if (!mascotStates.has(cvs)) {
+    mascotStates.set(cvs, {
+      hover: false,     // 鼠标悬浮中
+      clickT: 0,        // 点击后的动画计时（倒计时到0）
+      shakeT: 0,        // 摇晃后的动画计时
+      shakeHistory: [],  // 用于检测摇晃
+    });
+  }
+  return mascotStates.get(cvs);
+}
+
+function bindMascotInteraction(cvs, id) {
+  const state = getMascotState(cvs);
+
+  // 悬浮
+  cvs.addEventListener('mouseenter', () => { state.hover = true; });
+  cvs.addEventListener('mouseleave', () => { state.hover = false; });
+
+  // 点击
+  cvs.addEventListener('click', () => {
+    state.clickT = 40; // 40帧的反应动画
+    SFX.init();
+    // 根据性格播放不同音效
+    const sounds = { bobi: 'correct', boba: 'jump', bobo: 'tick', babi: 'wrong', babo: 'flip' };
+    SFX.play(sounds[id] || 'coin');
+  });
+
+  // 触摸点击
+  cvs.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    state.clickT = 40;
+    SFX.init();
+    const sounds = { bobi: 'correct', boba: 'jump', bobo: 'tick', babi: 'wrong', babo: 'flip' };
+    SFX.play(sounds[id] || 'coin');
+  }, { passive: false });
+
+  // 摇晃检测（快速来回移动鼠标）
+  cvs.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    state.shakeHistory.push({ x: e.offsetX, t: now });
+    // 只保留最近300ms
+    state.shakeHistory = state.shakeHistory.filter(p => now - p.t < 300);
+    if (state.shakeHistory.length >= 5) {
+      // 检查方向是否来回变化
+      let changes = 0;
+      for (let i = 2; i < state.shakeHistory.length; i++) {
+        const d1 = state.shakeHistory[i-1].x - state.shakeHistory[i-2].x;
+        const d2 = state.shakeHistory[i].x - state.shakeHistory[i-1].x;
+        if (d1 * d2 < 0) changes++;
+      }
+      if (changes >= 3) {
+        state.shakeT = 50; // 50帧的摇晃反应
+        state.shakeHistory = [];
+        SFX.init();
+        SFX.play('combo');
+      }
+    }
+  });
+}
+
+// 绘制交互反应（在drawMascot之后叠加）
+function drawMascotReaction(ctx, id, x, y, sz, t, state) {
+  if (!state) return;
+  const r = sz / 2;
+
+  // 倒计时递减
+  if (state.clickT > 0) state.clickT--;
+  if (state.shakeT > 0) state.shakeT--;
+
+  // ===== 悬浮反应 =====
+  if (state.hover) {
+    if (id === 'bobi') {
+      // 可爱：冒爱心
+      ctx.fillStyle = '#ff6b9c'; ctx.font = `${10 + Math.sin(t * 0.1) * 3}px serif`;
+      ctx.fillText('♡', x + r * 0.4, y - r * 0.5 + Math.sin(t * 0.08) * 5);
+      ctx.fillText('♡', x - r * 0.5, y - r * 0.3 + Math.cos(t * 0.1) * 4);
+    } else if (id === 'boba') {
+      // 活泼：闪电/火花围绕
+      ctx.strokeStyle = '#68d5ff'; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
+      for (let i = 0; i < 3; i++) {
+        const a = t * 0.12 + i * 2.1;
+        const px = x + Math.cos(a) * r * 0.7, py = y + Math.sin(a) * r * 0.7;
+        ctx.beginPath(); ctx.moveTo(px - 3, py - 5); ctx.lineTo(px + 1, py); ctx.lineTo(px - 2, py + 5); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    } else if (id === 'bobo') {
+      // 高冷：冒省略号气泡
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '10px sans-serif';
+      ctx.fillText('...', x + r * 0.3, y - r * 0.6);
+    } else if (id === 'babi') {
+      // 搞笑：冒汗+感叹号
+      ctx.fillStyle = '#ffd166'; ctx.font = '12px sans-serif';
+      ctx.fillText('!?', x + r * 0.3, y - r * 0.5 + Math.sin(t * 0.15) * 3);
+    } else if (id === 'babo') {
+      // 社恐：脸红+缩小
+      ctx.fillStyle = 'rgba(255,107,156,0.3)';
+      ctx.beginPath(); ctx.arc(x, y, r * 0.35, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ===== 点击反应 =====
+  if (state.clickT > 0) {
+    const p = state.clickT / 40; // 1→0
+    if (id === 'bobi') {
+      // 可爱：爆出一圈爱心
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const d = (1 - p) * r * 1.2;
+        ctx.globalAlpha = p;
+        ctx.fillStyle = '#ff6b9c'; ctx.font = '14px serif';
+        ctx.fillText('♡', x + Math.cos(a) * d - 5, y + Math.sin(a) * d + 5);
+      }
+      ctx.globalAlpha = 1;
+    } else if (id === 'boba') {
+      // 活泼：弹飞+旋转（整个角色在clickT期间偏移绘制）
+      ctx.fillStyle = 'rgba(104,213,255,0.3)';
+      const ring = (1 - p) * r * 1.5;
+      ctx.beginPath(); ctx.arc(x, y, ring, 0, Math.PI * 2); ctx.stroke();
+    } else if (id === 'bobo') {
+      // 高冷：慢慢竖起大拇指
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = `${14 + (1 - p) * 6}px serif`;
+      ctx.globalAlpha = p > 0.3 ? 1 : p / 0.3;
+      ctx.textAlign = 'center';
+      ctx.fillText('👍', x, y - r * 0.7 - (1 - p) * 10);
+      ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    } else if (id === 'babi') {
+      // 搞笑：摔倒冒星星
+      ctx.fillStyle = '#ffd166'; ctx.font = '11px serif';
+      for (let i = 0; i < 4; i++) {
+        const a = t * 0.1 + i * 1.5;
+        const d = (1 - p) * r * 0.8 + 10;
+        ctx.globalAlpha = p;
+        ctx.fillText('★', x + Math.cos(a) * d - 4, y - r * 0.3 + Math.sin(a) * d * 0.5);
+      }
+      ctx.globalAlpha = 1;
+    } else if (id === 'babo') {
+      // 社恐：惊吓后躲到角落，冒"啊"
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '11px sans-serif';
+      ctx.globalAlpha = p;
+      ctx.textAlign = 'center';
+      ctx.fillText('啊...!', x, y - r * 0.6 - (1 - p) * 8);
+      ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+  }
+
+  // ===== 摇晃反应 =====
+  if (state.shakeT > 0) {
+    const p = state.shakeT / 50;
+    if (id === 'bobi') {
+      // 可爱：头晕转圈冒爱心雨
+      ctx.fillStyle = '#ff6b9c'; ctx.font = '10px serif'; ctx.globalAlpha = p;
+      for (let i = 0; i < 8; i++) {
+        const fx = x - r + Math.random() * r * 2;
+        const fy = y - r * 0.5 - (1 - p) * 20 * Math.random();
+        ctx.fillText('♡', fx, fy);
+      }
+      ctx.globalAlpha = 1;
+    } else if (id === 'boba') {
+      // 活泼：兴奋到弹射，留残影
+      ctx.globalAlpha = p * 0.3;
+      ctx.fillStyle = '#68d5ff';
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath(); ctx.arc(x + (Math.random() - 0.5) * r, y + (Math.random() - 0.5) * r, r * 0.3, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (id === 'bobo') {
+      // 高冷：墨镜碎裂效果
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.globalAlpha = p;
+      for (let i = 0; i < 4; i++) {
+        const sx = x + (Math.random() - 0.5) * r * 0.6;
+        const sy = y - r * 0.1 + (Math.random() - 0.5) * r * 0.3;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + (Math.random() - 0.5) * 10, sy + (Math.random() - 0.5) * 10); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('别摇了。', x, y + r * 0.7);
+      ctx.textAlign = 'left';
+    } else if (id === 'babi') {
+      // 搞笑：笑到打滚，冒哈哈
+      ctx.fillStyle = 'rgba(255,209,102,0.8)'; ctx.font = '10px sans-serif'; ctx.globalAlpha = p;
+      const msgs = ['哈哈哈','嘿嘿','笑死','哈哈'];
+      for (let i = 0; i < 3; i++) {
+        ctx.fillText(msgs[i], x - r * 0.5 + i * r * 0.4, y - r * 0.5 - i * 10 - (1 - p) * 5);
+      }
+      ctx.globalAlpha = 1;
+    } else if (id === 'babo') {
+      // 社恐：吓到躲进方块，颤抖
+      ctx.fillStyle = 'rgba(138,226,111,0.15)'; ctx.globalAlpha = p;
+      ctx.fillRect(x - r * 0.4, y - r * 0.3, r * 0.8, r * 0.7);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('呜呜呜', x, y + r * 0.6);
+      ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+  }
 }
 
 function drawMascot(ctx, id, x, y, sz, t) {

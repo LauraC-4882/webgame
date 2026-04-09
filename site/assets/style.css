@@ -250,7 +250,8 @@ button,input{font:inherit}
   transition:.25s ease
 }
 .mascot-card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.07)}
-.mascot-canvas{display:block;border-radius:12px}
+.mascot-canvas{display:block;border-radius:12px;cursor:pointer;transition:filter .2s ease}
+.mascot-canvas:hover{filter:brightness(1.1) drop-shadow(0 0 8px rgba(104,213,255,.3))}
 .mascot-name{color:var(--text);font-size:.95rem;font-weight:700}
 .mascot-personality{font-size:.78rem;font-weight:600;letter-spacing:.06em}
 .mascot-desc{color:var(--muted);font-size:.72rem;line-height:1.5;text-align:center}
