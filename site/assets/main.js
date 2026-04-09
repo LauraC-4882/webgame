@@ -552,6 +552,7 @@ function initHomePage() {
     const desc = el('span', 'mascot-desc', WORLD.secret.desc);
     bbCard.append(cvs, name, tag, desc);
     bbCard.classList.add('mascot-unlocked');
+    bindMascotInteraction(cvs, 'bobiboba');
     canvases.push({ cvs, id: 'bobiboba' });
   } else {
     bbCard.innerHTML = `
@@ -933,18 +934,26 @@ function getMascotState(cvs) {
 
 function bindMascotInteraction(cvs, id) {
   const state = getMascotState(cvs);
+  const triggerAllOthers = (prop, val) => {
+    if (id !== 'bobiboba' || !bindMascotInteraction._targets) return;
+    bindMascotInteraction._targets.forEach(({ state: s }) => { s[prop] = val; });
+  };
   const playClick = () => {
     state.clickT = 40;
     SFX.init();
-    const sounds = { bobi: 'correct', boba: 'jump', bobo: 'tick', babi: 'wrong', babo: 'flip' };
+    const sounds = { bobi: 'correct', boba: 'jump', bobo: 'tick', babi: 'wrong', babo: 'flip', bobiboba: 'levelUp' };
     SFX.play(sounds[id] || 'coin');
+    // bobiboba 点击 → 所有角色一起点击反应
+    triggerAllOthers('clickT', 40);
   };
   const triggerShake = () => {
-    if (state.shakeT > 0) return; // 防抖
+    if (state.shakeT > 0) return;
     state.shakeT = 50;
     state.shakeHistory = [];
     SFX.init();
-    SFX.play('combo');
+    SFX.play(id === 'bobiboba' ? 'levelUp' : 'combo');
+    // bobiboba 摇晃 → 所有角色一起摇晃
+    triggerAllOthers('shakeT', 50);
   };
 
   // === 鼠标事件 ===
@@ -1090,6 +1099,15 @@ function drawMascotReaction(ctx, id, x, y, sz, t, state) {
       // 社恐：脸红+缩小
       ctx.fillStyle = 'rgba(255,107,156,0.3)';
       ctx.beginPath(); ctx.arc(x, y, r * 0.35, 0, Math.PI * 2); ctx.fill();
+    } else if (id === 'bobiboba') {
+      // 彩虹隐藏款：悬浮时放出彩虹光环
+      const cols = WORLD.secret.colors;
+      cols.forEach((c, i) => {
+        const a = t * 0.05 + i * 1.05;
+        ctx.fillStyle = c; ctx.globalAlpha = 0.4;
+        ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6, 4, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -1135,6 +1153,20 @@ function drawMascotReaction(ctx, id, x, y, sz, t, state) {
       ctx.textAlign = 'center';
       ctx.fillText('啊...!', x, y - r * 0.6 - (1 - p) * 8);
       ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    } else if (id === 'bobiboba') {
+      // 彩虹隐藏款点击：六色烟花全屏爆炸
+      const cols = WORLD.secret.colors;
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2 + t * 0.02;
+        const d = (1 - p) * r * 2;
+        ctx.fillStyle = cols[i % cols.length]; ctx.globalAlpha = p * 0.7;
+        ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 3 + Math.sin(i) * 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffd166'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+      ctx.globalAlpha = p;
+      ctx.fillText('全员集合！', x, y - r * 0.7 - (1 - p) * 15);
+      ctx.globalAlpha = 1; ctx.textAlign = 'left';
     }
   }
 
@@ -1185,6 +1217,20 @@ function drawMascotReaction(ctx, id, x, y, sz, t, state) {
       ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('呜呜呜', x, y + r * 0.6);
       ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    } else if (id === 'bobiboba') {
+      // 彩虹隐藏款摇晃：整个世界都在抖，彩虹波纹扩散
+      const cols = WORLD.secret.colors;
+      for (let ring = 0; ring < 3; ring++) {
+        const rd = (1 - p) * r * (1.5 + ring * 0.8);
+        ctx.strokeStyle = cols[(ring + Math.floor(t / 5)) % cols.length];
+        ctx.lineWidth = 2; ctx.globalAlpha = p * (0.5 - ring * 0.12);
+        ctx.beginPath(); ctx.arc(x, y, rd, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.globalAlpha = p;
+      ctx.fillText('✿ 全员震动模式 ✿', x, y - r * 0.8);
+      ctx.globalAlpha = 1; ctx.textAlign = 'left';
     }
   }
 }
