@@ -1,39 +1,107 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>记忆翻翻</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="site-shell">
     <header class="site-header">
-      <h1>记忆翻翻</h1>
-      <nav>
-        <a href="index.html">首页</a>
-        <a href="memory.html">刷新本页</a>
-      </nav>
-    </header>
-    <main class="container layout-two">
-      <section class="game-shell">
-        <h2 class="game-title">记忆翻翻</h2>
-        <p class="game-subtitle">先看 10 秒全部正面，再在 20 张卡牌里找出一对对相同图案。</p>
-        <div id="game-area" class="game-area" data-game="memory"></div>
-        <div class="game-controls">
-          <button id="start-btn">开始游戏</button>
-          <button id="save-btn" class="secondary">保存分数</button>
-          <div class="score-box">分数：<span id="score">0</span></div>
-          <div class="score-box">状态：<span id="status">待机</span></div>
+      <div class="brand-wrap">
+        <a class="logo-orb" href="../index.html"><span class="logo-text">web<br>game</span></a>
+        <div class="brand-texts">
+          <a class="brand" href="../index.html">Webgame</a>
+          <span class="brand-sub">Cyberpunk Arcade</span>
         </div>
+      </div>
+
+      <nav class="top-nav">
+        <a href="../index.html">home</a>
+        <a href="./connect.html">connect</a>
+        <a href="./jump.html">jump</a>
+        <a href="./match3.html">match3</a>
+        <a class="is-current" href="./memory.html">memory</a>
+        <a href="./merge.html">merge</a>
+        <a href="./runner.html">runner</a>
+      </nav>
+
+      <div class="auth-links">
+        <a href="../login.html">login</a>
+        <a class="auth-primary" href="../signup.html">sign up</a>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="game-layout">
+        <div class="game-main">
+          <section class="panel game-head">
+            <p class="eyebrow">memory</p>
+            <h1>Memory</h1>
+            <p>你会先看到 20 张卡片正面 10 秒，之后需要凭记忆把它们两两翻对。</p>
+          </section>
+
+          <div id="game-area" class="game-area" data-game="memory"></div>
+
+          <div class="game-controls">
+            <button id="start-btn">开始</button>
+            <div class="score">分数: <span id="score">0</span></div>
+          </div>
+
+          <section class="panel leaderboard" id="leaderboard"></section>
+        </div>
+
+        <aside class="game-side">
+          <section class="panel side-card">
+            <h3>characters</h3>
+            <div class="mascot-row">
+              <div class="mascot-card"><div class="mascot skull"><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="mouth"></div><div class="body"></div><div class="leg leg-l"></div><div class="leg leg-r"></div></div></div>
+              <div class="mascot-card"><div class="mascot buddy"><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="arm arm-l"></div><div class="arm arm-r"></div><div class="leg leg-l"></div><div class="leg leg-r"></div></div></div>
+              <div class="mascot-card"><div class="mascot crown"><div class="extra"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="leg leg-l"></div><div class="leg leg-r"></div></div></div>
+            </div>
+          </section>
+
+          <section class="panel side-card">
+            <h3>quick links</h3>
+            <div class="quick-links">
+              <a href="../index.html">homepage</a>
+              <a href="./connect.html">connect</a>
+              <a href="./jump.html">jump</a>
+              <a href="./match3.html">match3</a>
+              <a href="./merge.html">merge</a>
+              <a href="./runner.html">runner</a>
+            </div>
+          </section>
+        </aside>
       </section>
-      <aside>
-        <section class="leaderboard" id="leaderboard"></section>
-        <section class="leaderboard">
-          <h3>玩法提示</h3>
-          <ul class="tip-list" id="tips"></ul>
-        </section>
-      </aside>
     </main>
-    <script src="main.js"></script>
-  </body>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <div class="footer-title">footnotes</div>
+          <div class="footer-links">
+            <a href="../index.html">homepage</a>
+            <a href="./connect.html">connect</a>
+            <a href="./jump.html">jump</a>
+            <a href="./match3.html">match3</a>
+            <a href="./memory.html">memory</a>
+            <a href="./merge.html">merge</a>
+            <a href="./runner.html">runner</a>
+          </div>
+        </div>
+        <div>
+          <div class="footer-title">account</div>
+          <div class="footer-auth">
+            <a href="../login.html">login</a>
+            <a href="../signup.html">sign up</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../assets/main.js"></script>
+</body>
 </html>

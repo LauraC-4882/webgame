@@ -1,39 +1,107 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>消消乐</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Match 3</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <div class="site-shell">
     <header class="site-header">
-      <h1>消消乐</h1>
-      <nav>
-        <a href="index.html">首页</a>
-        <a href="match3.html">刷新本页</a>
-      </nav>
-    </header>
-    <main class="container layout-two">
-      <section class="game-shell">
-        <h2 class="game-title">消消乐</h2>
-        <p class="game-subtitle">交换相邻方块，三个或以上相同即可消除并连锁下落。</p>
-        <div id="game-area" class="game-area" data-game="match3"></div>
-        <div class="game-controls">
-          <button id="start-btn">开始游戏</button>
-          <button id="save-btn" class="secondary">保存分数</button>
-          <div class="score-box">分数：<span id="score">0</span></div>
-          <div class="score-box">状态：<span id="status">待机</span></div>
+      <div class="brand-wrap">
+        <a class="logo-orb" href="../index.html"><span class="logo-text">web<br>game</span></a>
+        <div class="brand-texts">
+          <a class="brand" href="../index.html">Webgame</a>
+          <span class="brand-sub">Cyberpunk Arcade</span>
         </div>
+      </div>
+
+      <nav class="top-nav">
+        <a href="../index.html">home</a>
+        <a href="./connect.html">connect</a>
+        <a href="./jump.html">jump</a>
+        <a class="is-current" href="./match3.html">match3</a>
+        <a href="./memory.html">memory</a>
+        <a href="./merge.html">merge</a>
+        <a href="./runner.html">runner</a>
+      </nav>
+
+      <div class="auth-links">
+        <a href="../login.html">login</a>
+        <a class="auth-primary" href="../signup.html">sign up</a>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="game-layout">
+        <div class="game-main">
+          <section class="panel game-head">
+            <p class="eyebrow">match3</p>
+            <h1>Match 3</h1>
+            <p>交换相邻图块，三个或以上相同图块连成一线即可消除。整体视觉更偏可爱糖果风。</p>
+          </section>
+
+          <div id="game-area" class="game-area" data-game="match3"></div>
+
+          <div class="game-controls">
+            <button id="start-btn">开始</button>
+            <div class="score">分数: <span id="score">0</span></div>
+          </div>
+
+          <section class="panel leaderboard" id="leaderboard"></section>
+        </div>
+
+        <aside class="game-side">
+          <section class="panel side-card">
+            <h3>characters</h3>
+            <div class="mascot-row">
+              <div class="mascot-card"><div class="mascot fluff"><div class="extra"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div></div></div>
+              <div class="mascot-card"><div class="mascot blob"><div class="extra"></div><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="arm arm-l"></div><div class="arm arm-r"></div></div></div>
+              <div class="mascot-card"><div class="mascot buddy"><div class="head"></div><div class="eye eye-l"></div><div class="eye eye-r"></div><div class="arm arm-l"></div><div class="arm arm-r"></div><div class="leg leg-l"></div><div class="leg leg-r"></div></div></div>
+            </div>
+          </section>
+
+          <section class="panel side-card">
+            <h3>quick links</h3>
+            <div class="quick-links">
+              <a href="../index.html">homepage</a>
+              <a href="./connect.html">connect</a>
+              <a href="./jump.html">jump</a>
+              <a href="./memory.html">memory</a>
+              <a href="./merge.html">merge</a>
+              <a href="./runner.html">runner</a>
+            </div>
+          </section>
+        </aside>
       </section>
-      <aside>
-        <section class="leaderboard" id="leaderboard"></section>
-        <section class="leaderboard">
-          <h3>玩法提示</h3>
-          <ul class="tip-list" id="tips"></ul>
-        </section>
-      </aside>
     </main>
-    <script src="main.js"></script>
-  </body>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <div class="footer-title">footnotes</div>
+          <div class="footer-links">
+            <a href="../index.html">homepage</a>
+            <a href="./connect.html">connect</a>
+            <a href="./jump.html">jump</a>
+            <a href="./match3.html">match3</a>
+            <a href="./memory.html">memory</a>
+            <a href="./merge.html">merge</a>
+            <a href="./runner.html">runner</a>
+          </div>
+        </div>
+        <div>
+          <div class="footer-title">account</div>
+          <div class="footer-auth">
+            <a href="../login.html">login</a>
+            <a href="../signup.html">sign up</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../assets/main.js"></script>
+</body>
 </html>

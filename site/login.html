@@ -1,24 +1,82 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>登录</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    <header class="site-header"><h1>登录</h1><nav><a href="index.html">返回首页</a></nav></header>
-    <main class="container auth-forms">
-      <h2>欢迎回来</h2>
-      <p class="muted">这是前端演示表单，提交后会在本地提示成功。</p>
-      <form>
-        <label>用户名或邮箱</label>
-        <input name="user" required>
-        <label>密码</label>
-        <input name="password" type="password" required>
-        <button type="submit">登录</button>
-      </form>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="brand-wrap">
+        <a class="logo-orb" href="./index.html"><span class="logo-text">web<br>game</span></a>
+        <div class="brand-texts">
+          <a class="brand" href="./index.html">Webgame</a>
+          <span class="brand-sub">Cyberpunk Arcade</span>
+        </div>
+      </div>
+
+      <nav class="top-nav">
+        <a href="./index.html">home</a>
+        <a href="./games/connect.html">connect</a>
+        <a href="./games/jump.html">jump</a>
+        <a href="./games/match3.html">match3</a>
+        <a href="./games/memory.html">memory</a>
+        <a href="./games/merge.html">merge</a>
+        <a href="./games/runner.html">runner</a>
+      </nav>
+
+      <div class="auth-links">
+        <a class="is-current" href="./login.html">login</a>
+        <a class="auth-primary" href="./signup.html">sign up</a>
+      </div>
+    </header>
+
+    <main class="page auth-page">
+      <section class="panel auth-card">
+        <p class="eyebrow">login</p>
+        <h1>Welcome back</h1>
+        <p>登录后可以继续保存你的本地排行榜昵称和分数记录。</p>
+
+        <form class="auth-forms">
+          <label>用户名或邮箱</label>
+          <input name="user" required>
+
+          <label>密码</label>
+          <input name="password" type="password" required>
+
+          <button type="submit">登录</button>
+        </form>
+      </section>
     </main>
-    <script src="main.js"></script>
-  </body>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <div class="footer-title">footnotes</div>
+          <div class="footer-links">
+            <a href="./index.html">homepage</a>
+            <a href="./games/connect.html">connect</a>
+            <a href="./games/jump.html">jump</a>
+            <a href="./games/match3.html">match3</a>
+            <a href="./games/memory.html">memory</a>
+            <a href="./games/merge.html">merge</a>
+            <a href="./games/runner.html">runner</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-title">account</div>
+          <div class="footer-auth">
+            <a href="./login.html">login</a>
+            <a href="./signup.html">sign up</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./assets/main.js"></script>
+</body>
 </html>

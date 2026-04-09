@@ -1,615 +1,1294 @@
-function escapeHtml(s){return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function byId(id){return document.getElementById(id);}
-function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
-function rand(min,max){return Math.random()*(max-min)+min;}
-function randint(min,max){return Math.floor(rand(min,max+1));}
-function choice(arr){return arr[Math.floor(Math.random()*arr.length)];}
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+/* =========================
+   CYBER GAME WORLD RANK
+   six playable mini-games
+   ========================= */
 
-const TIP_TEXT = {
-  jump:[
-    '按住空格、鼠标或手指蓄力，松开后起跳。',
-    '距离越远需要蓄力越久，但太大也会直接跳过头。',
-    '完美落在平台中间附近会得到额外分数。'
-  ],
-  connect:[
-    '拖动圆点节点，目标是让所有线段都不再交叉。',
-    '紫色线表示还在交叉，青色线表示已经安全。',
-    '每过一关节点会变多一点。'
-  ],
-  memory:[
-    '开始后先有 10 秒展示时间，20 张卡牌全部正面。',
-    '展示结束后翻面，逐一找出相同的可爱图案。',
-    '剩余时间越多，最终奖励越高。'
-  ],
-  runner:[
-    '空格、点击或轻触都可以跳跃。',
-    '撞到障碍就结束，吃到星星会额外加分。',
-    '速度会逐渐提升，后面会更刺激。'
-  ],
-  match3:[
-    '点击两个相邻方块即可交换。',
-    '只有能形成三消的交换才会生效。',
-    '连续掉落产生连锁时会快速涨分。'
-  ],
-  merge:[
-    '点击两个相同且相邻的物件即可合成。',
-    '每回合会随机长出新的低级物件。',
-    '最高是 6 级，做出 6 级会有大奖励。'
+const WORLD = {
+  title: '赛博游戏世界榜',
+  subtitle: '五位数字住民正在穿梭于不同游戏区，挑战排行榜。',
+  mascots: [
+    { id: 'skully', name: 'Skully', shape: 'skull', color: '#b996ff', accent: '#63f3ff', face: '☠' },
+    { id: 'fluff', name: 'Fluff', shape: 'fluff', color: '#ffe37a', accent: '#ff5db8', face: '❀' },
+    { id: 'bloby', name: 'Bloby', shape: 'blob', color: '#9b6bff', accent: '#77ffac', face: '◕' },
+    { id: 'buddy', name: 'Buddy', shape: 'buddy', color: '#c8b6ff', accent: '#63f3ff', face: '☺' },
+    { id: 'crownie', name: 'Crownie', shape: 'crown', color: '#ffe37a', accent: '#9b6bff', face: '♛' }
   ]
 };
 
-const LEADERBOARD_LIMIT = 12;
-function leaderboardKey(){ return 'leaderboard:' + location.pathname; }
-function loadLeaderboard(){ return JSON.parse(localStorage.getItem(leaderboardKey()) || '[]'); }
-function saveLeaderboard(list){ localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, LEADERBOARD_LIMIT))); }
-function renderLeaderboard(el){
-  if(!el) return;
-  const list = loadLeaderboard();
-  el.innerHTML = '<h3>本地排行榜</h3>' + (list.length
-    ? '<ol>' + list.map(x => `<li>${escapeHtml(x.name)} — ${x.score}</li>`).join('') + '</ol>'
-    : '<div class="muted">还没有记录，来当第一个霓虹高手吧。</div>');
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 }
-function saveScore(score, el){
-  const name = prompt('输入一个显示名称：') || '匿名';
-  const list = loadLeaderboard();
-  list.push({name, score: Math.round(score), ts: Date.now()});
-  list.sort((a,b) => b.score - a.score || a.ts - b.ts);
-  saveLeaderboard(list);
+
+function gameKey() {
+  return 'cyberworld:' + location.pathname;
+}
+
+function leaderboardKey() {
+  return 'leaderboard:' + location.pathname;
+}
+
+function bestKey() {
+  return 'best:' + location.pathname;
+}
+
+function saveBest(score) {
+  const best = Number(localStorage.getItem(bestKey()) || 0);
+  if (score > best) localStorage.setItem(bestKey(), String(Math.round(score)));
+}
+
+function getBest() {
+  return Number(localStorage.getItem(bestKey()) || 0);
+}
+
+function renderLeaderboard(el) {
+  if (!el) return;
+  const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
+  const best = getBest();
+  el.innerHTML = `
+    <h3>世界榜</h3>
+    <p class="muted">${WORLD.subtitle}</p>
+    <div class="world-best">本页最高分：<strong>${best}</strong></div>
+    ${list.length ? `
+      <ol>
+        ${list.map(i => `<li>${escapeHtml(i.name)} — ${i.score}</li>`).join('')}
+      </ol>
+    ` : `<div class="muted">暂无记录，成为这个赛博分区的第一位上榜者。</div>`}
+  `;
+}
+
+function saveScoreToLeaderboard(score, el) {
+  const name = prompt('输入你的赛博昵称（留空则为 匿名旅人）') || '匿名旅人';
+  const list = JSON.parse(localStorage.getItem(leaderboardKey()) || '[]');
+  const item = { name, score: Math.round(score), ts: Date.now() };
+  list.push(item);
+  list.sort((a, b) => b.score - a.score);
+  localStorage.setItem(leaderboardKey(), JSON.stringify(list.slice(0, 20)));
+  saveBest(score);
   renderLeaderboard(el);
 }
 
-function attachFormDemo(){
-  document.querySelectorAll('.auth-forms form').forEach(form => {
-    form.addEventListener('submit', e => {
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function choice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function el(tag, className, html) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (html != null) node.innerHTML = html;
+  return node;
+}
+
+function paintCyberPanel(container, title, desc) {
+  const lore = el('div', 'cw-lore', `
+    <div class="cw-lore-badge">${WORLD.title}</div>
+    <div class="cw-lore-title">${title}</div>
+    <div class="cw-lore-text">${desc}</div>
+  `);
+  container.appendChild(lore);
+  return lore;
+}
+
+function mascotMarkup(m) {
+  return `<span class="cw-mascot-chip" style="--mc:${m.color};--ma:${m.accent}">${m.face} ${m.name}</span>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const forms = document.querySelectorAll('.auth-forms');
+  forms.forEach(f => {
+    f.addEventListener('submit', e => {
       e.preventDefault();
-      alert('已本地提交成功。这是纯前端演示页，还没有接入真实后端。');
+      alert('Demo only: this account system is still local-only.');
     });
   });
-}
 
-function setTips(game){
-  const tips = byId('tips');
-  if(!tips) return;
-  tips.innerHTML = (TIP_TEXT[game] || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
-}
+  const gameArea = document.getElementById('game-area');
+  if (!gameArea) return;
 
-function updateStatus(text){ const el = byId('status'); if(el) el.textContent = text; }
+  const gameType = gameArea.dataset.game || 'generic';
+  const startBtn = document.getElementById('start-btn');
+  const scoreEl = document.getElementById('score');
+  const leaderboardEl = document.getElementById('leaderboard');
 
-function initGamePage(){
-  const area = byId('game-area');
-  if(!area) return;
-  const game = area.dataset.game;
-  const scoreEl = byId('score');
-  const startBtn = byId('start-btn');
-  const saveBtn = byId('save-btn');
-  const leaderboardEl = byId('leaderboard');
-  let score = 0;
-  let controller = null;
   let running = false;
+  let score = 0;
+  let activeController = null;
 
-  function setScore(v){ score = Math.max(0, Math.round(v)); if(scoreEl) scoreEl.textContent = score; }
+  function setScore(v) {
+    score = Math.max(0, Math.round(v));
+    if (scoreEl) scoreEl.textContent = score;
+  }
 
-  function cleanup(){ if(controller && controller.destroy) controller.destroy(); controller = null; }
+  function addScore(v) {
+    setScore(score + v);
+  }
 
-  function start(){
-    cleanup();
-    setScore(0);
-    area.innerHTML = '';
-    controller = createGame(game, area, setScore, updateStatus);
-    if(controller && controller.start) controller.start();
+  function startGame() {
+    if (running) return;
     running = true;
-    startBtn.textContent = '重新开始';
+    setScore(0);
+    gameArea.innerHTML = '';
+    activeController = createControllerFor(gameType, gameArea, {
+      setScore,
+      addScore,
+      getScore: () => score,
+      onFinish: finalScore => {
+        setScore(finalScore ?? score);
+        stopGame(false);
+      }
+    });
+    if (activeController?.start) activeController.start();
+    startBtn.textContent = '结束';
+    startBtn.classList.add('pulse');
   }
 
-  startBtn?.addEventListener('click', start);
-  saveBtn?.addEventListener('click', () => saveScore(score, leaderboardEl));
+  function stopGame(save = true) {
+    if (!running) return;
+    running = false;
+    if (activeController?.stop) activeController.stop();
+    activeController = null;
+    startBtn.textContent = '开始';
+    startBtn.classList.remove('pulse');
+    if (save) saveScoreToLeaderboard(score, leaderboardEl);
+    else {
+      saveBest(score);
+      renderLeaderboard(leaderboardEl);
+    }
+  }
+
+  startBtn?.addEventListener('click', () => {
+    if (running) stopGame(true);
+    else startGame();
+  });
+
   renderLeaderboard(leaderboardEl);
-  setTips(game);
-  updateStatus('待机');
+});
+
+function createControllerFor(type, container, api) {
+  const map = {
+    jump: jumpGame,
+    connect: connectGame,
+    match3: match3Game,
+    memory: memoryGame,
+    merge: mergeGame,
+    runner: runnerGame
+  };
+  return (map[type] || genericGame)(container, api);
 }
 
-function createGame(type, area, setScore, setStatus){
-  const map = { jump: jumpGame, connect: connectGame, memory: memoryGame, runner: runnerGame, match3: match3Game, merge: mergeGame };
-  return (map[type] || emptyGame)(area, setScore, setStatus);
+function genericGame(container) {
+  container.innerHTML = `<div class="cw-empty">未找到游戏控制器</div>`;
+  return { start() {}, stop() {} };
 }
-function emptyGame(area){ area.textContent = 'No game'; return {start(){},destroy(){}}; }
 
-function createCanvasArea(container){
+/* =========================
+   JUMP
+   hold to charge, release to jump
+   ========================= */
+function jumpGame(container, api) {
+  const wrap = el('div', 'cw-wrap');
+  const top = paintCyberPanel(
+    wrap,
+    '跃迁平台区',
+    `在赛博高楼之间进行短距跃迁。由 ${mascotMarkup(WORLD.mascots[1])} 负责校准蓄力。按住空格、鼠标或手指蓄力，松开后起跳。`
+  );
+  const bar = el('div', 'jump-charge-wrap', `<div class="jump-charge-bar"></div>`);
   const canvas = document.createElement('canvas');
-  container.appendChild(canvas);
+  canvas.className = 'cw-canvas';
+  wrap.append(bar, canvas);
+  container.appendChild(wrap);
+
   const ctx = canvas.getContext('2d');
-  let width = 0, height = 0;
-  function resize(){
-    width = container.clientWidth;
-    height = container.clientHeight;
-    const ratio = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    canvas.width = Math.floor(width * ratio);
-    canvas.height = Math.floor(height * ratio);
-    canvas.style.width = width + 'px';
-    canvas.style.height = height + 'px';
-    ctx.setTransform(ratio,0,0,ratio,0,0);
-  }
-  resize();
-  window.addEventListener('resize', resize);
-  return {canvas, ctx, get width(){return width;}, get height(){return height;}, destroy(){window.removeEventListener('resize', resize);}};
-}
+  let w = 0, h = 0, raf = null;
+  let charging = false, charge = 0, gameOver = false;
+  let worldSpeed = 0;
+  let currentPlatform = 0;
+  let lastLandedIndex = 0;
+  let score = 0;
+  const mascot = WORLD.mascots[3];
 
-function drawNeonBg(ctx,w,h){
-  const g = ctx.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,'#0b1430');
-  g.addColorStop(.55,'#170c32');
-  g.addColorStop(1,'#120924');
-  ctx.fillStyle = g;
-  ctx.fillRect(0,0,w,h);
-  ctx.save();
-  ctx.globalAlpha = .2;
-  for(let i=0;i<8;i++){
-    const x = (i+1)*w/9;
-    const rg = ctx.createRadialGradient(x,h*.15,0,x,h*.15,140);
-    rg.addColorStop(0, i%2 ? 'rgba(57,247,255,.5)' : 'rgba(255,89,199,.45)');
-    rg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rg;
-    ctx.beginPath(); ctx.arc(x,h*.15,140,0,Math.PI*2); ctx.fill();
-  }
-  ctx.restore();
-  ctx.strokeStyle = 'rgba(57,247,255,.08)';
-  for(let y=h*.66; y<h; y+=26){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-  for(let x=0; x<w; x+=36){ ctx.beginPath(); ctx.moveTo(x,h*.66); ctx.lineTo(x,h); ctx.stroke(); }
-}
+  const player = {
+    x: 0, y: 0, r: 18,
+    vx: 0, vy: 0,
+    airborne: false
+  };
 
-function drawMascot(ctx,x,y,r,face='cat'){
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.fillStyle = '#fff7ff';
-  ctx.strokeStyle = 'rgba(0,0,0,.12)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
-  if(face==='cat'){
-    ctx.beginPath(); ctx.moveTo(-r*.55,-r*.4); ctx.lineTo(-r*.15,-r*1.05); ctx.lineTo(-r*.02,-r*.3); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(r*.55,-r*.4); ctx.lineTo(r*.15,-r*1.05); ctx.lineTo(r*.02,-r*.3); ctx.fill(); ctx.stroke();
-  }
-  ctx.fillStyle='#1f1b2d';
-  ctx.beginPath(); ctx.arc(-r*.28,-r*.05,r*.1,0,Math.PI*2); ctx.arc(r*.28,-r*.05,r*.1,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='#ff7bbf'; ctx.lineWidth=2.5;
-  ctx.beginPath(); ctx.arc(0,r*.1,r*.18,0,Math.PI); ctx.stroke();
-  ctx.restore();
-}
+  let platforms = [];
 
-function drawPlatform(ctx,p){
-  const g = ctx.createLinearGradient(p.x,p.y,p.x,p.y+p.h);
-  g.addColorStop(0,'#3ef6ff'); g.addColorStop(1,'#904fff');
-  ctx.fillStyle = g;
-  roundRect(ctx,p.x,p.y,p.w,p.h,12,true,false);
-  ctx.fillStyle = 'rgba(255,255,255,.22)';
-  roundRect(ctx,p.x+10,p.y+6,p.w-20,6,6,true,false);
-}
-function roundRect(ctx,x,y,w,h,r,fill=true,stroke=false){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
-  if(fill) ctx.fill(); if(stroke) ctx.stroke();
-}
-
-function jumpGame(container, setScore, setStatus){
-  const stage = createCanvasArea(container);
-  const {canvas, ctx, destroy:destroyCanvas} = stage;
-  let raf = 0;
-  let player, current, target, charge=0, charging=false, transitioning=false, score=0, hint='按住蓄力';
-
-  function makeTarget(){
-    const distance = rand(130, 260);
-    const width = rand(78, 124);
-    const top = clamp(current.y - rand(-45, 45), 150, stage.height-110);
-    return {x: current.x + distance, y: top, w: width, h: 18};
+  function resize() {
+    w = container.clientWidth - 32;
+    h = Math.max(420, Math.floor(window.innerHeight * 0.58));
+    canvas.width = w;
+    canvas.height = h;
   }
-  function reset(){
-    current = {x: 120, y: stage.height - 110, w: 116, h: 18};
-    target = makeTarget();
-    player = {x: current.x + current.w/2, y: current.y - 18, vx:0, vy:0, r:18, state:'idle'};
-    charge=0; charging=false; transitioning=false; score=0; hint='按住蓄力'; setScore(score); setStatus('等待起跳');
-  }
-  function beginCharge(){ if(player.state!=='idle' || transitioning) return; charging=true; setStatus('蓄力中'); }
-  function release(){
-    if(!charging || player.state!=='idle') return;
-    charging=false;
-    const power = 6 + charge * 17;
-    player.state='jump';
-    player.vx = power * 1.12;
-    player.vy = -power * 0.88;
-    setStatus('飞行中');
-  }
-  function pointerDown(e){ e.preventDefault(); beginCharge(); }
-  function pointerUp(e){ e.preventDefault(); release(); }
-  function keyDown(e){ if(e.code==='Space'){ e.preventDefault(); beginCharge(); } }
-  function keyUp(e){ if(e.code==='Space'){ e.preventDefault(); release(); } }
 
-  function onLandSuccess(perfect){
-    player.state='idle'; player.vx=player.vy=0; player.x = target.x + target.w/2; player.y = target.y - player.r;
-    const add = perfect ? 3 : 1;
-    score += add; setScore(score);
-    hint = perfect ? 'Perfect +3!' : '+1';
-    setStatus(perfect ? '完美落点' : '成功落地');
-    transitioning = true;
-    setTimeout(()=>{
-      const shift = target.x - current.x;
-      current = {x:120, y:target.y, w:target.w, h:target.h};
-      target = makeTarget();
-      player.x = current.x + current.w/2;
-      player.y = current.y - player.r;
-      transitioning = false;
-      hint = '继续';
-    }, 260);
+  function makePlatform(x, y, width) {
+    return { x, y, width, height: 18 };
   }
-  function onFail(){ player.state='fall'; setStatus('掉下去了'); hint='失误，点击重新开始'; }
 
-  function update(){
-    if(charging) charge = clamp(charge + 0.015, 0, 1);
-    if(player.state==='jump' || player.state==='fall'){
+  function reset() {
+    resize();
+    score = 0;
+    api.setScore(0);
+    charge = 0;
+    charging = false;
+    gameOver = false;
+    worldSpeed = 0;
+    currentPlatform = 0;
+    lastLandedIndex = 0;
+    platforms = [
+      makePlatform(90, h - 95, 120),
+      makePlatform(310, h - 150, 110),
+      makePlatform(560, h - 210, 130)
+    ];
+    for (let i = 0; i < 8; i++) spawnPlatform();
+    player.x = platforms[0].x + platforms[0].width / 2;
+    player.y = platforms[0].y - player.r;
+    player.vx = 0;
+    player.vy = 0;
+    player.airborne = false;
+    updateChargeBar();
+  }
+
+  function spawnPlatform() {
+    const last = platforms[platforms.length - 1];
+    const gap = 140 + Math.random() * 130;
+    const ny = Math.max(120, Math.min(h - 90, last.y + (Math.random() * 150 - 75)));
+    const width = 92 + Math.random() * 56;
+    platforms.push(makePlatform(last.x + gap, ny, width));
+  }
+
+  function updateChargeBar() {
+    const barInner = bar.querySelector('.jump-charge-bar');
+    if (barInner) barInner.style.width = `${Math.min(100, charge * 100)}%`;
+  }
+
+  function drawBackground() {
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#0a0f22');
+    grd.addColorStop(1, '#160d32');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    for (let i = 0; i < 30; i++) {
+      ctx.strokeStyle = 'rgba(99,243,255,0.06)';
+      ctx.beginPath();
+      ctx.moveTo(i * 40, 0);
+      ctx.lineTo(i * 40, h);
+      ctx.stroke();
+    }
+    for (let j = 0; j < 20; j++) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.beginPath();
+      ctx.moveTo(0, j * 32);
+      ctx.lineTo(w, j * 32);
+      ctx.stroke();
+    }
+  }
+
+  function drawCity() {
+    for (let i = 0; i < 18; i++) {
+      const bx = (i * 110 - (platforms[0].x % 110));
+      const bw = 70 + (i % 4) * 16;
+      const bh = 120 + (i % 5) * 28;
+      ctx.fillStyle = 'rgba(255,255,255,0.035)';
+      ctx.fillRect(bx, h - bh, bw, bh);
+    }
+  }
+
+  function drawPlatforms() {
+    platforms.forEach((p, i) => {
+      ctx.fillStyle = i === currentPlatform ? 'rgba(255,93,184,0.24)' : 'rgba(99,243,255,0.18)';
+      ctx.strokeStyle = i === currentPlatform ? 'rgba(255,93,184,0.8)' : 'rgba(99,243,255,0.8)';
+      roundRect(ctx, p.x, p.y, p.width, p.height, 12, true, true);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.beginPath();
+      ctx.moveTo(p.x + 10, p.y + p.height / 2);
+      ctx.lineTo(p.x + p.width - 10, p.y + p.height / 2);
+      ctx.stroke();
+    });
+  }
+
+  function drawPlayer() {
+    const glow = charge > 0.4 && !player.airborne;
+    if (glow) {
+      ctx.fillStyle = 'rgba(255,93,184,0.18)';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r + 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = mascot.color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#071018';
+    ctx.beginPath();
+    ctx.arc(player.x - 5, player.y - 2, 2.7, 0, Math.PI * 2);
+    ctx.arc(player.x + 5, player.y - 2, 2.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = mascot.accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y + 3, 6, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  }
+
+  function physics() {
+    if (charging && !player.airborne) {
+      charge = Math.min(1, charge + 0.018);
+      updateChargeBar();
+    }
+
+    if (player.airborne) {
+      player.vy += 0.48;
       player.x += player.vx;
       player.y += player.vy;
-      player.vy += 0.48;
-      const plat = [current,target].find(p => player.x > p.x && player.x < p.x+p.w && player.y + player.r >= p.y && player.y + player.r <= p.y+12 && player.vy >= 0);
-      if(plat){
-        if(plat===target){
-          const centerOffset = Math.abs(player.x - (target.x + target.w/2));
-          onLandSuccess(centerOffset < 12);
-        } else {
-          player.state='idle'; player.vx=player.vy=0; player.y = current.y - player.r; charge = 0; setStatus('回到起点');
+    }
+
+    if (!player.airborne) {
+      const targetX = 140;
+      const dx = targetX - player.x;
+      player.x += dx * 0.12;
+    }
+
+    const scrollThreshold = w * 0.45;
+    if (player.x > scrollThreshold) {
+      const shift = player.x - scrollThreshold;
+      player.x = scrollThreshold;
+      platforms.forEach(p => p.x -= shift);
+    }
+
+    for (let i = 0; i < platforms.length; i++) {
+      const p = platforms[i];
+      const withinX = player.x >= p.x && player.x <= p.x + p.width;
+      const crossingTop = player.vy >= 0 && player.y + player.r >= p.y && player.y + player.r <= p.y + p.height + 12;
+      if (player.airborne && withinX && crossingTop) {
+        player.airborne = false;
+        player.vx = 0;
+        player.vy = 0;
+        player.y = p.y - player.r;
+        currentPlatform = i;
+
+        if (i > lastLandedIndex) {
+          lastLandedIndex = i;
+          score += 10;
+          api.setScore(score);
+          while (platforms.length - i < 8) spawnPlatform();
         }
-      } else if(player.y > stage.height + 70){ onFail(); }
+      }
+    }
+
+    if (player.y > h + 80) {
+      gameOver = true;
+      api.onFinish(score);
+    }
+
+    while (platforms.length && platforms[0].x + platforms[0].width < -120) {
+      platforms.shift();
+      currentPlatform = Math.max(0, currentPlatform - 1);
+      lastLandedIndex = Math.max(0, lastLandedIndex - 1);
     }
   }
 
-  function render(){
-    const w=stage.width, h=stage.height;
-    drawNeonBg(ctx,w,h);
-    drawPlatform(ctx,current); drawPlatform(ctx,target);
-    ctx.fillStyle='rgba(255,255,255,.9)';
-    ctx.font='700 16px Inter';
-    ctx.fillText('Charge', 20, 28);
-    ctx.strokeStyle='rgba(57,247,255,.35)'; roundRect(ctx,92,14,180,18,10,false,true);
-    const bar = ctx.createLinearGradient(92,0,272,0); bar.addColorStop(0,'#39f7ff'); bar.addColorStop(1,'#ff59c7');
-    ctx.fillStyle=bar; roundRect(ctx,92,14,180*charge,18,10,true,false);
-    ctx.fillStyle='rgba(255,255,255,.88)'; ctx.fillText(hint, 290, 28);
-
-    drawMascot(ctx, player.x, player.y, player.r,'cat');
-    ctx.fillStyle='rgba(57,247,255,.25)'; ctx.beginPath(); ctx.ellipse(player.x, player.y+player.r+7, player.r*.85, 6, 0, 0, Math.PI*2); ctx.fill();
-
-    ctx.fillStyle='rgba(255,255,255,.75)';
-    ctx.font='14px Inter';
-    ctx.fillText('按住鼠标 / 触屏 / 空格蓄力', 20, h-28);
+  function drawHud() {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = '600 14px Inter';
+    ctx.fillText(`角色: ${mascot.name}`, 14, 24);
+    ctx.fillText(`蓄力: ${Math.round(charge * 100)}%`, 14, 44);
+    ctx.fillText('按住蓄力，松开跳跃', 14, 64);
   }
-  function loop(){ update(); render(); raf=requestAnimationFrame(loop); }
+
+  function loop() {
+    drawBackground();
+    drawCity();
+    physics();
+    drawPlatforms();
+    drawPlayer();
+    drawHud();
+    if (!gameOver) raf = requestAnimationFrame(loop);
+  }
+
+  function chargeStart(e) {
+    e?.preventDefault?.();
+    if (player.airborne || gameOver) return;
+    charging = true;
+  }
+
+  function chargeEnd(e) {
+    e?.preventDefault?.();
+    if (!charging || player.airborne || gameOver) return;
+    charging = false;
+    const power = 7 + charge * 11;
+    player.vx = 3.8 + charge * 8.8;
+    player.vy = -power;
+    player.airborne = true;
+    charge = 0;
+    updateChargeBar();
+  }
+
+  function keydown(e) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      chargeStart(e);
+    }
+  }
+
+  function keyup(e) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      chargeEnd(e);
+    }
+  }
 
   return {
-    start(){ reset(); loop(); canvas.addEventListener('pointerdown', pointerDown); window.addEventListener('pointerup', pointerUp); document.addEventListener('keydown', keyDown); document.addEventListener('keyup', keyUp); },
-    destroy(){ cancelAnimationFrame(raf); canvas.removeEventListener('pointerdown', pointerDown); window.removeEventListener('pointerup', pointerUp); document.removeEventListener('keydown', keyDown); document.removeEventListener('keyup', keyUp); destroyCanvas(); }
+    start() {
+      reset();
+      loop();
+      canvas.addEventListener('mousedown', chargeStart);
+      window.addEventListener('mouseup', chargeEnd);
+      canvas.addEventListener('touchstart', chargeStart, { passive: false });
+      window.addEventListener('touchend', chargeEnd, { passive: false });
+      window.addEventListener('keydown', keydown);
+      window.addEventListener('keyup', keyup);
+      window.addEventListener('resize', resize);
+    },
+    stop() {
+      cancelAnimationFrame(raf);
+      canvas.removeEventListener('mousedown', chargeStart);
+      window.removeEventListener('mouseup', chargeEnd);
+      canvas.removeEventListener('touchstart', chargeStart);
+      window.removeEventListener('touchend', chargeEnd);
+      window.removeEventListener('keydown', keydown);
+      window.removeEventListener('keyup', keyup);
+      window.removeEventListener('resize', resize);
+    }
   };
 }
 
-function segmentsIntersect(a,b,c,d){
-  function ccw(p1,p2,p3){ return (p3.y-p1.y)*(p2.x-p1.x) > (p2.y-p1.y)*(p3.x-p1.x); }
-  if(a===c||a===d||b===c||b===d) return false;
-  return ccw(a,c,d) !== ccw(b,c,d) && ccw(a,b,c) !== ccw(a,b,d);
-}
+/* =========================
+   CONNECT
+   untangle line puzzle
+   ========================= */
+function connectGame(container, api) {
+  const wrap = el('div', 'cw-wrap');
+  paintCyberPanel(
+    wrap,
+    '线网解缠区',
+    `由 ${mascotMarkup(WORLD.mascots[0])} 与 ${mascotMarkup(WORLD.mascots[4])} 共同看守。拖动节点，让所有发光线段都不再交叉。`
+  );
+  const info = el('div', 'cw-subinfo', '拖动圆点，直到交叉数变为 0。');
+  const canvas = document.createElement('canvas');
+  canvas.className = 'cw-canvas';
+  wrap.append(info, canvas);
+  container.appendChild(wrap);
 
-function connectGame(container, setScore, setStatus){
-  const stage = createCanvasArea(container);
-  const {canvas, ctx, destroy:destroyCanvas} = stage;
-  let raf=0, level=1, score=0, nodes=[], edges=[], dragging=-1, offset={x:0,y:0};
-  function build(lv){
-    const count = Math.min(4 + lv, 8);
-    nodes = Array.from({length:count}, (_,i)=>({
-      x: rand(80, stage.width-80),
-      y: rand(90, stage.height-70),
-      r: 17,
-      label: String.fromCharCode(65+i)
-    }));
-    const base = [];
-    for(let i=0;i<count;i++) base.push([i,(i+2)%count]);
-    if(count>5) base.push([0, count-2], [1, count-1]);
-    edges = base;
-    setStatus('拖动节点，解开交叉');
+  const ctx = canvas.getContext('2d');
+  let w = 0, h = 0, raf = null;
+  let nodes = [], edges = [], dragIndex = -1;
+  let solved = false;
+  let score = 0;
+
+  function resize() {
+    w = container.clientWidth - 32;
+    h = Math.max(420, Math.floor(window.innerHeight * 0.58));
+    canvas.width = w;
+    canvas.height = h;
   }
-  function countCrossings(){
-    let hits=0;
-    for(let i=0;i<edges.length;i++) for(let j=i+1;j<edges.length;j++){
-      const [a,b]=edges[i], [c,d]=edges[j];
-      if(segmentsIntersect(nodes[a],nodes[b],nodes[c],nodes[d])) hits++;
+
+  function buildLevel() {
+    resize();
+    score = 300;
+    api.setScore(score);
+    solved = false;
+    const cx = w / 2, cy = h / 2;
+    const radius = Math.min(w, h) * 0.28;
+    const count = 7;
+    nodes = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.7;
+      nodes.push({
+        x: cx + Math.cos(angle) * radius * (0.7 + Math.random() * 0.5),
+        y: cy + Math.sin(angle) * radius * (0.7 + Math.random() * 0.5),
+        r: 16,
+        mascot: WORLD.mascots[i % WORLD.mascots.length]
+      });
     }
-    return hits;
+    edges = [
+      [0, 3], [0, 4], [1, 4], [1, 5], [2, 6], [2, 4],
+      [3, 6], [3, 5], [0, 2], [1, 3]
+    ];
   }
-  function pointerPos(e){ const r = canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
-  function down(e){
-    const p = pointerPos(e);
-    dragging = nodes.findIndex(n => dist(n,p) <= n.r + 8);
-    if(dragging>=0){ offset.x = nodes[dragging].x - p.x; offset.y = nodes[dragging].y - p.y; }
-  }
-  function move(e){
-    if(dragging<0) return;
-    const p = pointerPos(e);
-    nodes[dragging].x = clamp(p.x + offset.x, 28, stage.width - 28);
-    nodes[dragging].y = clamp(p.y + offset.y, 32, stage.height - 28);
-    const left = countCrossings();
-    if(left===0){
-      score += 100 + level*20; setScore(score); setStatus(`第 ${level} 关完成`);
-      level++;
-      setTimeout(()=>build(level), 500);
-    } else {
-      setStatus(`还剩 ${left} 处交叉`);
+
+  function intersects(a, b, c, d) {
+    function ccw(p1, p2, p3) {
+      return (p3.y - p1.y) * (p2.x - p1.x) > (p2.y - p1.y) * (p3.x - p1.x);
     }
+    if (a === c || a === d || b === c || b === d) return false;
+    return ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d);
   }
-  function up(){ dragging=-1; }
-  function render(){
-    const w=getW,h=getH;
-    drawNeonBg(ctx,w,h);
-    const crossings = [];
-    for(let i=0;i<edges.length;i++) for(let j=i+1;j<edges.length;j++){
-      const [a,b]=edges[i], [c,d]=edges[j];
-      if(segmentsIntersect(nodes[a],nodes[b],nodes[c],nodes[d])) crossings.push(i,j);
+
+  function countCrossings() {
+    let count = 0;
+    for (let i = 0; i < edges.length; i++) {
+      for (let j = i + 1; j < edges.length; j++) {
+        const [a1, a2] = edges[i];
+        const [b1, b2] = edges[j];
+        if (intersects(nodes[a1], nodes[a2], nodes[b1], nodes[b2])) count++;
+      }
     }
-    edges.forEach(([a,b], idx)=>{
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = crossings.includes(idx) ? 'rgba(255,89,199,.95)' : 'rgba(57,247,255,.95)';
-      ctx.beginPath(); ctx.moveTo(nodes[a].x,nodes[a].y); ctx.lineTo(nodes[b].x,nodes[b].y); ctx.stroke();
+    return count;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#0b1023');
+    grd.addColorStop(1, '#180d34');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    const crossings = countCrossings();
+    api.setScore(Math.max(0, score - (300 - score) + Math.max(0, 180 - crossings * 20)));
+    info.textContent = crossings === 0 ? '交叉数 0，线网已解开。' : `当前交叉数：${crossings}`;
+
+    edges.forEach(([i, j]) => {
+      const a = nodes[i], b = nodes[j];
+      let cross = false;
+      for (let k = 0; k < edges.length; k++) {
+        for (let m = k + 1; m < edges.length; m++) {
+          if (k === edges.indexOf([i, j]) || m === edges.indexOf([i, j])) continue;
+        }
+      }
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = crossings === 0 ? 'rgba(119,255,172,0.85)' : 'rgba(99,243,255,0.65)';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
     });
-    nodes.forEach((n,i)=>{
-      const rg = ctx.createRadialGradient(n.x,n.y,2,n.x,n.y,28);
-      rg.addColorStop(0,'rgba(255,255,255,.95)');
-      rg.addColorStop(.55,i%2?'rgba(255,89,199,.88)':'rgba(57,247,255,.88)');
-      rg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(n.x,n.y,26,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = i===dragging ? '#ffe46a' : '#ffffff';
-      ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#16162a'; ctx.font='700 14px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(n.label,n.x,n.y+1);
+
+    nodes.forEach((n, idx) => {
+      ctx.fillStyle = n.mascot.color;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = n.mascot.accent;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.fillStyle = '#071018';
+      ctx.font = '700 14px Inter';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.mascot.face, n.x, n.y + 1);
     });
-    ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText('Level ' + level, 18, 28);
+
+    if (crossings === 0 && !solved) {
+      solved = true;
+      api.onFinish(500);
+    }
+
+    raf = requestAnimationFrame(draw);
   }
-  function loop(){ render(); raf=requestAnimationFrame(loop); }
+
+  function pointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches?.[0];
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function down(e) {
+    const p = pointerPos(e);
+    dragIndex = nodes.findIndex(n => Math.hypot(p.x - n.x, p.y - n.y) <= n.r + 8);
+  }
+
+  function move(e) {
+    if (dragIndex < 0) return;
+    e.preventDefault?.();
+    const p = pointerPos(e);
+    nodes[dragIndex].x = Math.max(26, Math.min(w - 26, p.x));
+    nodes[dragIndex].y = Math.max(26, Math.min(h - 26, p.y));
+    score = Math.max(0, score - 0.4);
+  }
+
+  function up() {
+    dragIndex = -1;
+  }
+
   return {
-    start(){ level=1; score=0; setScore(score); build(level); loop(); canvas.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); },
-    destroy(){ cancelAnimationFrame(raf); canvas.removeEventListener('pointerdown', down); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); destroyCanvas(); }
+    start() {
+      buildLevel();
+      draw();
+      canvas.addEventListener('mousedown', down);
+      canvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      canvas.addEventListener('touchstart', down, { passive: true });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      window.addEventListener('touchend', up);
+      window.addEventListener('resize', buildLevel);
+    },
+    stop() {
+      cancelAnimationFrame(raf);
+      canvas.removeEventListener('mousedown', down);
+      canvas.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      canvas.removeEventListener('touchstart', down);
+      canvas.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+      window.removeEventListener('resize', buildLevel);
+    }
   };
 }
 
-function memoryGame(container, setScore, setStatus){
-  const icons = ['🐱','🐰','🐻','🦊','🐼','🐸','🐤','🦄','🍓','🍰'];
-  let deck=[], revealed=new Set(), matched=new Set(), busy=false, previewTimer=10, playTimer=70, score=0, interval=0;
-  const info = document.createElement('div'); info.className='center-message';
-  const banner = document.createElement('div'); banner.className='toast'; info.appendChild(banner); container.appendChild(info);
-  const grid = document.createElement('div'); grid.className='card-grid'; container.appendChild(grid);
+/* =========================
+   MATCH 3
+   ========================= */
+function match3Game(container, api) {
+  const wrap = el('div', 'cw-wrap');
+  paintCyberPanel(
+    wrap,
+    '糖块配线区',
+    `由 ${mascotMarkup(WORLD.mascots[2])} 负责分发图块。交换相邻方块，三个或以上同类连线即可消除。`
+  );
+  const boardEl = el('div', 'm3-board');
+  wrap.appendChild(boardEl);
+  container.appendChild(wrap);
 
-  function buildDeck(){
-    const arr = icons.concat(icons).map((icon, id) => ({id, icon, key: icon + '-' + id}));
-    deck = arr.sort(() => Math.random() - .5);
+  const size = 7;
+  const types = WORLD.mascots.map(m => m.id);
+  let board = [];
+  let selected = null;
+  let busy = false;
+
+  function randomType() {
+    return choice(types);
   }
-  function cardState(i){ return matched.has(i) || revealed.has(i); }
-  function render(){
-    banner.textContent = previewTimer > 0 ? `记忆时间：${previewTimer}s` : `剩余时间：${playTimer}s`;
+
+  function createCleanBoard() {
+    board = Array.from({ length: size }, () => Array.from({ length: size }, () => randomType()));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const matches = findMatches();
+      if (matches.size) {
+        changed = true;
+        matches.forEach(key => {
+          const [r, c] = key.split('-').map(Number);
+          board[r][c] = randomType();
+        });
+      }
+    }
+  }
+
+  function mascotById(id) {
+    return WORLD.mascots.find(m => m.id === id);
+  }
+
+  function render() {
+    boardEl.innerHTML = '';
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const id = board[r][c];
+        const m = mascotById(id);
+        const cell = el('button', 'm3-cell');
+        cell.type = 'button';
+        cell.style.setProperty('--mc', m.color);
+        cell.style.setProperty('--ma', m.accent);
+        cell.innerHTML = `<span>${m.face}</span>`;
+        if (selected && selected.r === r && selected.c === c) cell.classList.add('selected');
+        cell.addEventListener('click', () => clickCell(r, c));
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function adjacent(a, b) {
+    return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+  }
+
+  function swap(a, b) {
+    [board[a.r][a.c], board[b.r][b.c]] = [board[b.r][b.c], board[a.r][a.c]];
+  }
+
+  function clickCell(r, c) {
+    if (busy) return;
+    if (!selected) {
+      selected = { r, c };
+      render();
+      return;
+    }
+    const next = { r, c };
+    if (selected.r === r && selected.c === c) {
+      selected = null;
+      render();
+      return;
+    }
+    if (!adjacent(selected, next)) {
+      selected = next;
+      render();
+      return;
+    }
+    busy = true;
+    swap(selected, next);
+    const matches = findMatches();
+    if (!matches.size) {
+      swap(selected, next);
+      selected = null;
+      busy = false;
+      render();
+      return;
+    }
+    selected = null;
+    cascade();
+  }
+
+  function findMatches() {
+    const matches = new Set();
+
+    for (let r = 0; r < size; r++) {
+      let run = 1;
+      for (let c = 1; c <= size; c++) {
+        if (c < size && board[r][c] === board[r][c - 1]) run++;
+        else {
+          if (run >= 3) {
+            for (let k = 0; k < run; k++) matches.add(`${r}-${c - 1 - k}`);
+          }
+          run = 1;
+        }
+      }
+    }
+
+    for (let c = 0; c < size; c++) {
+      let run = 1;
+      for (let r = 1; r <= size; r++) {
+        if (r < size && board[r][c] === board[r - 1][c]) run++;
+        else {
+          if (run >= 3) {
+            for (let k = 0; k < run; k++) matches.add(`${r - 1 - k}-${c}`);
+          }
+          run = 1;
+        }
+      }
+    }
+    return matches;
+  }
+
+  function collapse() {
+    for (let c = 0; c < size; c++) {
+      const col = [];
+      for (let r = size - 1; r >= 0; r--) {
+        if (board[r][c] != null) col.push(board[r][c]);
+      }
+      for (let r = size - 1, i = 0; r >= 0; r--, i++) {
+        board[r][c] = col[i] ?? randomType();
+      }
+    }
+  }
+
+  function cascade() {
+    const matches = findMatches();
+    if (!matches.size) {
+      busy = false;
+      render();
+      return;
+    }
+    matches.forEach(key => {
+      const [r, c] = key.split('-').map(Number);
+      board[r][c] = null;
+    });
+    api.addScore(matches.size * 10);
+    render();
+
+    setTimeout(() => {
+      collapse();
+      render();
+      setTimeout(cascade, 180);
+    }, 180);
+  }
+
+  return {
+    start() {
+      createCleanBoard();
+      api.setScore(0);
+      render();
+    },
+    stop() {}
+  };
+}
+
+/* =========================
+   MEMORY
+   20 cards, 10s preview
+   ========================= */
+function memoryGame(container, api) {
+  const wrap = el('div', 'cw-wrap');
+  paintCyberPanel(
+    wrap,
+    '记忆映像库',
+    `五位数字住民留下了 20 张映像卡。你只有 10 秒预览时间，然后要把它们两两配对。`
+  );
+  const status = el('div', 'cw-subinfo', '点击开始后，将先展示 10 秒。');
+  const grid = el('div', 'memory-grid');
+  wrap.append(status, grid);
+  container.appendChild(wrap);
+
+  let deck = [];
+  let revealed = [];
+  let matched = new Set();
+  let locked = true;
+  let timer = null;
+  let previewLeft = 10;
+
+  function buildDeck() {
+    const items = [];
+    WORLD.mascots.forEach(m => {
+      items.push({ key: m.id + '-1', pair: m.id, m });
+      items.push({ key: m.id + '-2', pair: m.id, m });
+      items.push({ key: m.id + '-3', pair: m.id + '-b', m });
+      items.push({ key: m.id + '-4', pair: m.id + '-b', m });
+    });
+    deck = shuffle(items).slice(0, 20);
+    revealed = deck.map((_, i) => i);
+    matched = new Set();
+    locked = true;
+  }
+
+  function render() {
     grid.innerHTML = '';
     deck.forEach((card, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'memory-card' + (cardState(i) ? ' revealed' : '') + (matched.has(i) ? ' matched' : '');
-      btn.textContent = previewTimer > 0 || cardState(i) ? card.icon : '✦';
+      const faceUp = revealed.includes(i) || matched.has(i);
+      const btn = el('button', 'memory-card' + (faceUp ? ' face-up' : ''));
+      btn.type = 'button';
+      btn.style.setProperty('--mc', card.m.color);
+      btn.style.setProperty('--ma', card.m.accent);
+      btn.innerHTML = `
+        <span class="memory-front">${card.m.face}</span>
+        <span class="memory-back">?</span>
+      `;
       btn.addEventListener('click', () => flip(i));
       grid.appendChild(btn);
     });
   }
-  function maybeFinish(){
-    if(matched.size === deck.length){
-      clearInterval(interval);
-      score += playTimer * 2;
-      setScore(score);
-      setStatus('全部配对完成');
-      banner.textContent = '全部找到了，做得好';
-    }
-  }
-  function flip(i){
-    if(previewTimer > 0 || busy || matched.has(i) || revealed.has(i)) return;
-    revealed.add(i); render();
-    if(revealed.size % 2 === 0){
-      busy = true;
-      const last = [...revealed].slice(-2);
-      const [a,b] = last;
-      if(deck[a].icon === deck[b].icon){
-        matched.add(a); matched.add(b); score += 20; setScore(score); busy = false; render(); maybeFinish();
+
+  function startPreview() {
+    previewLeft = 10;
+    status.textContent = `预览时间：${previewLeft} 秒`;
+    timer = setInterval(() => {
+      previewLeft--;
+      if (previewLeft <= 0) {
+        clearInterval(timer);
+        revealed = [];
+        locked = false;
+        status.textContent = '开始配对。每次翻两张。';
+        render();
       } else {
-        setTimeout(() => { revealed.delete(a); revealed.delete(b); busy = false; render(); }, 700);
+        status.textContent = `预览时间：${previewLeft} 秒`;
+      }
+    }, 1000);
+  }
+
+  function flip(i) {
+    if (locked || matched.has(i) || revealed.includes(i)) return;
+    revealed.push(i);
+    render();
+
+    if (revealed.length === 2) {
+      locked = true;
+      const [a, b] = revealed;
+      if (deck[a].pair === deck[b].pair) {
+        matched.add(a);
+        matched.add(b);
+        api.addScore(20);
+        revealed = [];
+        locked = false;
+        status.textContent = `成功配对 ${matched.size / 2}/10`;
+        render();
+        if (matched.size === deck.length) {
+          api.onFinish(api.getScore() + 100);
+        }
+      } else {
+        setTimeout(() => {
+          revealed = [];
+          locked = false;
+          render();
+        }, 700);
       }
     }
   }
+
   return {
-    start(){
-      buildDeck(); revealed = new Set(deck.map((_,i)=>i)); matched = new Set(); busy=false; previewTimer=10; playTimer=70; score=0; setScore(score); setStatus('记忆阶段'); render();
-      clearInterval(interval);
-      interval = setInterval(() => {
-        if(previewTimer > 0){
-          previewTimer--;
-          if(previewTimer === 0){ revealed = new Set(); setStatus('开始翻牌'); }
-        } else if(matched.size !== deck.length) {
-          playTimer--; if(playTimer <= 0){ playTimer = 0; clearInterval(interval); setStatus('时间到了'); banner.textContent = '时间到了，点击重新开始'; }
-        }
-        render();
-      }, 1000);
+    start() {
+      api.setScore(0);
+      buildDeck();
+      render();
+      startPreview();
     },
-    destroy(){ clearInterval(interval); }
+    stop() {
+      clearInterval(timer);
+    }
   };
 }
 
-function runnerGame(container, setScore, setStatus){
-  const stage = createCanvasArea(container);
-  const {canvas, ctx, destroy:destroyCanvas} = stage;
-  let raf=0, running=true;
-  const player = {x:82, y:0, vy:0, w:34, h:42, ground:false};
-  let obstacles=[], stars=[], tick=0, score=0, speed=6;
-  function reset(){ obstacles=[]; stars=[]; tick=0; score=0; speed=6; player.y=stage.height-86; player.vy=0; player.ground=true; running=true; setScore(score); setStatus('冲刺中'); }
-  function jump(){ if(player.ground && running){ player.vy = -13.5; player.ground=false; } }
-  function keyDown(e){ if(e.code==='Space'){ e.preventDefault(); jump(); } }
-  function pointerDown(e){ e.preventDefault(); jump(); }
-  function spawn(){
-    if(tick % 82 === 0) obstacles.push({x:stage.width+40, y:stage.height-78, w:rand(24,38), h:rand(34,56)});
-    if(tick % 110 === 0) stars.push({x:stage.width+40, y:rand(stage.height-180, stage.height-110), r:10});
+/* =========================
+   MERGE
+   5x5 grid, adjacent same auto-merge
+   6 levels max
+   ========================= */
+function mergeGame(container, api) {
+  const wrap = el('div', 'cw-wrap');
+  paintCyberPanel(
+    wrap,
+    '合成孵化仓',
+    `点击空格投放角色碎片。两个相同等级且相邻的碎片会自动融合。最高等级为 6 级。`
+  );
+  const nextBox = el('div', 'cw-subinfo', '');
+  const grid = el('div', 'merge-grid');
+  wrap.append(nextBox, grid);
+  container.appendChild(wrap);
+
+  const size = 5;
+  let board = [];
+  let nextPiece = null;
+
+  function piece(level, mascot) {
+    return { level, mascot };
   }
-  function update(){
-    if(!running) return;
-    tick++; speed = 6 + tick/320;
-    spawn();
-    player.vy += .72; player.y += player.vy; if(player.y >= stage.height-86){ player.y = stage.height-86; player.vy=0; player.ground=true; }
-    obstacles.forEach(o => o.x -= speed);
-    stars.forEach(s => s.x -= speed*.9);
-    obstacles = obstacles.filter(o => o.x + o.w > -40);
-    stars = stars.filter(s => s.x + s.r > -40);
-    obstacles.forEach(o => {
-      if(player.x < o.x + o.w && player.x + player.w > o.x && player.y < o.y + o.h && player.y + player.h > o.y){ running=false; setStatus('撞上障碍'); }
+
+  function newPiece() {
+    const level = Math.random() < 0.75 ? 1 : 2;
+    const mascot = choice(WORLD.mascots);
+    return piece(level, mascot);
+  }
+
+  function buildBoard() {
+    board = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+    nextPiece = newPiece();
+    api.setScore(0);
+    render();
+  }
+
+  function render() {
+    nextBox.innerHTML = `下一枚：<span class="merge-next" style="--mc:${nextPiece.mascot.color};--ma:${nextPiece.mascot.accent}">${nextPiece.mascot.face} Lv.${nextPiece.level}</span>`;
+    grid.innerHTML = '';
+    board.flat().forEach((cell, idx) => {
+      const btn = el('button', 'merge-cell');
+      btn.type = 'button';
+      if (cell) {
+        btn.style.setProperty('--mc', cell.mascot.color);
+        btn.style.setProperty('--ma', cell.mascot.accent);
+        btn.innerHTML = `<span>${cell.mascot.face}</span><small>Lv.${cell.level}</small>`;
+        btn.classList.add('filled');
+      } else {
+        btn.innerHTML = '<span class="merge-empty">+</span>';
+      }
+      btn.addEventListener('click', () => placeAt(Math.floor(idx / size), idx % size));
+      grid.appendChild(btn);
     });
-    stars = stars.filter(s => {
-      if(player.x < s.x + s.r && player.x + player.w > s.x - s.r && player.y < s.y + s.r && player.y + player.h > s.y - s.r){ score += 15; setScore(score); return false; }
+  }
+
+  function neighbors(r, c) {
+    return [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]
+      .filter(([rr, cc]) => rr >= 0 && rr < size && cc >= 0 && cc < size);
+  }
+
+  function placeAt(r, c) {
+    if (board[r][c]) return;
+    board[r][c] = nextPiece;
+    nextPiece = newPiece();
+    resolveMerges();
+    render();
+    if (isFull()) api.onFinish(api.getScore());
+  }
+
+  function isFull() {
+    return board.flat().every(Boolean);
+  }
+
+  function resolveMerges() {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      outer:
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const cell = board[r][c];
+          if (!cell) continue;
+          for (const [rr, cc] of neighbors(r, c)) {
+            const other = board[rr][cc];
+            if (other && other.level === cell.level && other.mascot.id === cell.mascot.id) {
+              board[r][c] = piece(Math.min(6, cell.level + 1), cell.mascot);
+              board[rr][cc] = null;
+              api.addScore(cell.level * 20);
+              changed = true;
+              break outer;
+            }
+          }
+        }
+      }
+      applyGravity();
+    }
+  }
+
+  function applyGravity() {
+    for (let c = 0; c < size; c++) {
+      const col = [];
+      for (let r = size - 1; r >= 0; r--) {
+        if (board[r][c]) col.push(board[r][c]);
+      }
+      for (let r = size - 1, i = 0; r >= 0; r--, i++) {
+        board[r][c] = col[i] || null;
+      }
+    }
+  }
+
+  return {
+    start() {
+      buildBoard();
+    },
+    stop() {}
+  };
+}
+
+/* =========================
+   RUNNER
+   endless runner
+   ========================= */
+function runnerGame(container, api) {
+  const wrap = el('div', 'cw-wrap');
+  paintCyberPanel(
+    wrap,
+    '奔行霓虹区',
+    `五位住民轮流冲榜。点击、触摸或空格起跳，跨越障碍并收集角色星章。`
+  );
+  const canvas = document.createElement('canvas');
+  canvas.className = 'cw-canvas';
+  wrap.appendChild(canvas);
+  container.appendChild(wrap);
+
+  const ctx = canvas.getContext('2d');
+  let w = 0, h = 0, raf = null;
+  let t = 0;
+  let obstacles = [];
+  let tokens = [];
+  let speed = 5.5;
+  let over = false;
+  let currentMascot = WORLD.mascots[0];
+
+  const player = {
+    x: 90, y: 0, w: 34, h: 46,
+    vy: 0,
+    ground: 0
+  };
+
+  function resize() {
+    w = container.clientWidth - 32;
+    h = Math.max(420, Math.floor(window.innerHeight * 0.58));
+    canvas.width = w;
+    canvas.height = h;
+    player.ground = h - 78;
+    player.y = player.ground;
+  }
+
+  function reset() {
+    resize();
+    t = 0;
+    speed = 5.5;
+    obstacles = [];
+    tokens = [];
+    over = false;
+    currentMascot = WORLD.mascots[0];
+    api.setScore(0);
+  }
+
+  function jump() {
+    if (player.y >= player.ground) player.vy = -12.4;
+  }
+
+  function spawnObstacle() {
+    const tall = Math.random() < 0.4;
+    obstacles.push({
+      x: w + 60,
+      y: player.ground + (tall ? -58 : -34),
+      w: tall ? 26 : 34,
+      h: tall ? 58 : 34
+    });
+  }
+
+  function spawnToken() {
+    const m = choice(WORLD.mascots);
+    tokens.push({
+      x: w + 60,
+      y: player.ground - 60 - Math.random() * 90,
+      r: 16,
+      mascot: m
+    });
+  }
+
+  function rectHit(a, b) {
+    return !(a.x + a.w < b.x || a.x > b.x + b.w || a.y < b.y - b.h || a.y - a.h > b.y);
+  }
+
+  function circleRectHit(circle, rect) {
+    const cx = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
+    const cy = Math.max(rect.y - rect.h, Math.min(circle.y, rect.y));
+    return Math.hypot(circle.x - cx, circle.y - cy) < circle.r;
+  }
+
+  function update() {
+    t++;
+    if (t % 90 === 0) spawnObstacle();
+    if (t % 110 === 0) spawnToken();
+    if (t % 240 === 0) speed += 0.35;
+
+    player.vy += 0.72;
+    player.y += player.vy;
+    if (player.y > player.ground) {
+      player.y = player.ground;
+      player.vy = 0;
+    }
+
+    obstacles.forEach(o => o.x -= speed);
+    tokens.forEach(k => k.x -= speed * 0.96);
+    obstacles = obstacles.filter(o => o.x + o.w > -50);
+    tokens = tokens.filter(k => k.x + k.r > -50);
+
+    const rect = { x: player.x, y: player.y, w: player.w, h: player.h };
+
+    for (const o of obstacles) {
+      if (rectHit(rect, { x: o.x, y: o.y, w: o.w, h: o.h })) {
+        over = true;
+        api.onFinish(api.getScore());
+        return;
+      }
+    }
+
+    tokens = tokens.filter(k => {
+      if (circleRectHit(k, rect)) {
+        currentMascot = k.mascot;
+        api.addScore(20);
+        return false;
+      }
       return true;
     });
-    if(tick % 8 === 0){ score += 1; setScore(score); }
+
+    if (t % 12 === 0) api.addScore(1);
   }
-  function drawStar(x,y,r){
-    ctx.save(); ctx.translate(x,y); ctx.beginPath();
-    for(let i=0;i<5;i++){ ctx.lineTo(Math.cos((18+i*72)/180*Math.PI)*r, -Math.sin((18+i*72)/180*Math.PI)*r); ctx.lineTo(Math.cos((54+i*72)/180*Math.PI)*r*.45, -Math.sin((54+i*72)/180*Math.PI)*r*.45); }
-    ctx.closePath(); ctx.fillStyle='#ffe46a'; ctx.fill(); ctx.restore();
+
+  function draw() {
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#0b1023');
+    grd.addColorStop(1, '#180d35');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = 'rgba(99,243,255,0.08)';
+    for (let i = 0; i < 24; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, i * 28);
+      ctx.lineTo(w, i * 28);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, player.ground + 10, w, 6);
+
+    obstacles.forEach(o => {
+      ctx.fillStyle = 'rgba(255,93,184,0.8)';
+      roundRect(ctx, o.x, o.y - o.h, o.w, o.h, 8, true, false);
+    });
+
+    tokens.forEach(k => {
+      ctx.fillStyle = k.mascot.color;
+      ctx.beginPath();
+      ctx.arc(k.x, k.y, k.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#071018';
+      ctx.font = '700 14px Inter';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(k.mascot.face, k.x, k.y + 1);
+    });
+
+    ctx.fillStyle = currentMascot.color;
+    roundRect(ctx, player.x, player.y - player.h, player.w, player.h, 12, true, false);
+    ctx.fillStyle = '#071018';
+    ctx.font = '700 18px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText(currentMascot.face, player.x + player.w / 2, player.y - player.h / 2 + 3);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.textAlign = 'left';
+    ctx.font = '600 14px Inter';
+    ctx.fillText(`当前角色: ${currentMascot.name}`, 14, 24);
   }
-  function render(){
-    const w=stage.width,h=stage.height; drawNeonBg(ctx,w,h);
-    ctx.fillStyle='rgba(10,255,220,.18)'; ctx.fillRect(0,h-42,w,42);
-    ctx.strokeStyle='rgba(57,247,255,.25)'; ctx.beginPath(); ctx.moveTo(0,h-42); ctx.lineTo(w,h-42); ctx.stroke();
-    stars.forEach(s => drawStar(s.x,s.y,s.r));
-    obstacles.forEach(o => { ctx.fillStyle='rgba(255,89,199,.9)'; roundRect(ctx,o.x,o.y,o.w,o.h,8,true,false); });
-    drawMascot(ctx, player.x + player.w/2, player.y + player.h/2 - 3, 16, 'cat');
-    ctx.fillStyle='rgba(57,247,255,.2)'; ctx.fillRect(18,16,140,10);
-    ctx.fillStyle='rgba(255,228,106,.85)'; ctx.fillRect(18,16,Math.min(140, speed*14),10);
-    ctx.fillStyle='rgba(255,255,255,.86)'; ctx.font='14px Inter'; ctx.fillText('速度', 166, 25);
-    if(!running){ ctx.fillStyle='rgba(0,0,0,.38)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.font='700 28px Inter'; ctx.fillText('游戏结束', w/2-55, h/2); }
+
+  function loop() {
+    update();
+    draw();
+    if (!over) raf = requestAnimationFrame(loop);
   }
-  function loop(){ update(); render(); raf=requestAnimationFrame(loop); }
+
+  function press(e) {
+    e?.preventDefault?.();
+    jump();
+  }
+
+  function keydown(e) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      jump();
+    }
+  }
+
   return {
-    start(){ reset(); loop(); document.addEventListener('keydown', keyDown); canvas.addEventListener('pointerdown', pointerDown); },
-    destroy(){ cancelAnimationFrame(raf); document.removeEventListener('keydown', keyDown); canvas.removeEventListener('pointerdown', pointerDown); destroyCanvas(); }
+    start() {
+      reset();
+      loop();
+      canvas.addEventListener('mousedown', press);
+      canvas.addEventListener('touchstart', press, { passive: false });
+      window.addEventListener('keydown', keydown);
+      window.addEventListener('resize', resize);
+    },
+    stop() {
+      cancelAnimationFrame(raf);
+      canvas.removeEventListener('mousedown', press);
+      canvas.removeEventListener('touchstart', press);
+      window.removeEventListener('keydown', keydown);
+      window.removeEventListener('resize', resize);
+    }
   };
 }
 
-function match3Game(container, setScore, setStatus){
-  const types = ['🍓','🧁','🐥','🍋','🪻','🫐'];
-  const cols=7, rows=7;
-  let board=[], selected=null, score=0, lock=false;
-  const grid = document.createElement('div'); grid.className='match-grid'; container.appendChild(grid);
-  function randomType(){ return choice(types); }
-  function createBoard(){
-    board = Array.from({length:rows}, () => Array.from({length:cols}, () => randomType()));
-    while(findMatches().length) collapseMatches(findMatches(), false);
-    selected = null; score = 0; setScore(score); setStatus('选择相邻方块交换'); render();
-  }
-  function render(){
-    grid.innerHTML='';
-    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-      const btn=document.createElement('button');
-      btn.className='match-tile' + (selected && selected.r===r && selected.c===c ? ' selected' : '');
-      btn.textContent=board[r][c];
-      btn.addEventListener('click',()=>onClick(r,c));
-      grid.appendChild(btn);
-    }
-  }
-  function swap(a,b){ const t=board[a.r][a.c]; board[a.r][a.c]=board[b.r][b.c]; board[b.r][b.c]=t; }
-  function neighbours(a,b){ return Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1; }
-  function findMatches(){
-    const mark = new Set();
-    for(let r=0;r<rows;r++){
-      let streak=1;
-      for(let c=1;c<=cols;c++){
-        if(c<cols && board[r][c]===board[r][c-1]) streak++; else { if(streak>=3) for(let k=0;k<streak;k++) mark.add(`${r},${c-1-k}`); streak=1; }
-      }
-    }
-    for(let c=0;c<cols;c++){
-      let streak=1;
-      for(let r=1;r<=rows;r++){
-        if(r<rows && board[r][c]===board[r-1][c]) streak++; else { if(streak>=3) for(let k=0;k<streak;k++) mark.add(`${r-1-k},${c}`); streak=1; }
-      }
-    }
-    return [...mark].map(x => x.split(',').map(Number));
-  }
-  function collapseMatches(matches, award=true){
-    if(!matches.length) return false;
-    matches.forEach(([r,c]) => board[r][c]=null);
-    if(award){ score += matches.length * 10; setScore(score); }
-    for(let c=0;c<cols;c++){
-      let write=rows-1;
-      for(let r=rows-1;r>=0;r--) if(board[r][c]!==null){ board[write][c]=board[r][c]; write--; }
-      while(write>=0){ board[write][c]=randomType(); write--; }
-    }
-    return true;
-  }
-  function settle(){
-    let chain=0, m;
-    while((m=findMatches()).length){ chain++; collapseMatches(m, true); score += chain>1 ? chain*8 : 0; setScore(score); }
-    setStatus(chain>1 ? `连锁 x${chain}` : '交换成功');
-  }
-  function onClick(r,c){
-    if(lock) return;
-    const cur={r,c};
-    if(!selected){ selected=cur; render(); return; }
-    if(selected.r===r && selected.c===c){ selected=null; render(); return; }
-    if(!neighbours(selected, cur)){ selected=cur; render(); return; }
-    swap(selected, cur);
-    const m=findMatches();
-    if(!m.length){ swap(selected,cur); setStatus('这一步不能形成三消'); }
-    else { settle(); }
-    selected=null; render();
-  }
-  return { start(){ createBoard(); }, destroy(){} };
+/* =========================
+   helpers
+   ========================= */
+function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
 }
-
-function mergeGame(container, setScore, setStatus){
-  const levels = [
-    {icon:'🌱', name:'芽芽'},
-    {icon:'🌷', name:'花花'},
-    {icon:'🐣', name:'啾啾'},
-    {icon:'🐱', name:'猫团'},
-    {icon:'🦄', name:'霓虹兽'},
-    {icon:'👑', name:'星冠王'}
-  ];
-  const size=5;
-  let board=[], selected=null, score=0;
-  const grid=document.createElement('div'); grid.className='merge-grid'; container.appendChild(grid);
-  function emptyBoard(){ board = Array.from({length:size},()=>Array(size).fill(0)); }
-  function randomSpawnLevel(){ return Math.random()<0.8 ? 1 : 2; }
-  function empties(){ const out=[]; for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(board[r][c]===0) out.push({r,c}); return out; }
-  function spawn(n=1){ for(let i=0;i<n;i++){ const e=choice(empties()); if(!e) break; board[e.r][e.c]=randomSpawnLevel(); } }
-  function render(){
-    grid.innerHTML='';
-    for(let r=0;r<size;r++) for(let c=0;c<size;c++){
-      const lv=board[r][c];
-      const btn=document.createElement('button');
-      btn.className='merge-tile' + (!lv ? ' empty-cell' : '') + (selected && selected.r===r && selected.c===c ? ' selected' : '');
-      btn.innerHTML = lv ? `<div>${levels[lv-1].icon}</div><div class="merge-label">Lv.${lv} ${levels[lv-1].name}</div>` : '<div class="merge-label">空</div>';
-      btn.addEventListener('click',()=>pick(r,c));
-      grid.appendChild(btn);
-    }
-  }
-  function adjacent(a,b){ return Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1; }
-  function pick(r,c){
-    if(board[r][c]===0){ selected=null; render(); return; }
-    const cur={r,c};
-    if(!selected){ selected=cur; render(); return; }
-    if(selected.r===r && selected.c===c){ selected=null; render(); return; }
-    if(!adjacent(selected,cur)){ selected=cur; render(); return; }
-    const a=board[selected.r][selected.c], b=board[r][c];
-    if(a!==b){ setStatus('只有相同等级才能合成'); selected=cur; render(); return; }
-    if(a>=6){ setStatus('已经是最高级'); selected=null; render(); return; }
-    board[r][c]=a+1; board[selected.r][selected.c]=0; score += a*25; if(a+1===6) score += 180; setScore(score);
-    spawn(1); setStatus(`合成成功：${levels[a].name}`); selected=null; render();
-    if(!empties().length){ setStatus('棋盘已满，尽量继续合成'); }
-  }
-  return {
-    start(){ emptyBoard(); spawn(8); score=0; setScore(score); setStatus('点击相邻相同物件进行合成'); render(); },
-    destroy(){}
-  };
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  attachFormDemo();
-  initGamePage();
-});
